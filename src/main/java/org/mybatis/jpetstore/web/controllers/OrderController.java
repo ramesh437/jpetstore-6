@@ -15,8 +15,11 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableList;
+
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
@@ -53,9 +56,23 @@ public class OrderController {
   /** The error view. */
   private static final String ERROR_VIEW = "common/Error";
 
+  /** Cache key for the card type list. */
+  private static final String CARD_TYPES_KEY = "cardTypes";
+
+  /** Bounded reference data cache (max 10 entries) to prevent unbounded memory growth. */
+  private static final LoadingCache<String, List<String>> REFERENCE_DATA = CacheBuilder.newBuilder().maximumSize(10)
+      .build(new CacheLoader<String, List<String>>() {
+        @Override
+        public List<String> load(String key) {
+          if (CARD_TYPES_KEY.equals(key)) {
+            return ImmutableList.of("Visa", "MasterCard", "American Express");
+          }
+          return ImmutableList.of();
+        }
+      });
+
   /** The card type list. */
-  private static final List<String> CARD_TYPE_LIST = Collections
-      .unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
+  private static final List<String> CARD_TYPE_LIST = REFERENCE_DATA.getUnchecked(CARD_TYPES_KEY);
 
   /** The order service. */
   @Autowired

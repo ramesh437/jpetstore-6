@@ -33,10 +33,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.codeborne.selenide.SelenideElement;
 import com.codeborne.selenide.junit5.ScreenShooterExtension;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.catalina.startup.Tomcat;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -48,6 +52,30 @@ import org.openqa.selenium.By;
  */
 @ExtendWith(ScreenShooterExtension.class)
 class ScreenTransitionIT {
+
+  private static Tomcat tomcat;
+
+  /**
+   * Start the embedded server hosting the application.
+   *
+   * @throws Exception
+   *           if the server cannot be started
+   */
+  @BeforeAll
+  static void startServer() throws Exception {
+    tomcat = EmbeddedServer.create(8080, "/jpetstore");
+    tomcat.start();
+  }
+
+  /**
+   * Stop the embedded server.
+   */
+  @AfterAll
+  static void stopServer() {
+    if (tomcat != null) {
+      EmbeddedServer.stop(tomcat);
+    }
+  }
 
   /**
    * Setup selenide.
@@ -215,7 +243,7 @@ class ScreenTransitionIT {
     $(By.cssSelector("#Catalog h3")).shouldBe(text("User Information"));
 
     // Create a new user
-    String userId = String.valueOf(System.currentTimeMillis());
+    String userId = String.valueOf(Instant.now(Clock.systemUTC()).toEpochMilli());
     $(By.name("username")).setValue(userId);
     $(By.name("password")).setValue("password");
     $(By.name("repeatedPassword")).setValue("password");

@@ -23,10 +23,11 @@ import java.net.Authenticator;
 import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 
 /**
  * The Class MavenWrapperDownloader.
@@ -36,8 +37,30 @@ public final class MavenWrapperDownloader {
     /** The wrapper version. */
     private static final String WRAPPER_VERSION = "3.3.4";
 
+    /** Connection timeout in milliseconds (override with MVNW_CONNECT_TIMEOUT_MS). */
+    private static final int CONNECT_TIMEOUT_MS = intFromEnv("MVNW_CONNECT_TIMEOUT_MS", 10000);
+
+    /** Read timeout in milliseconds (override with MVNW_READ_TIMEOUT_MS). */
+    private static final int READ_TIMEOUT_MS = intFromEnv("MVNW_READ_TIMEOUT_MS", 30000);
+
     /** The verbose. */
     private static final boolean VERBOSE = Boolean.parseBoolean(System.getenv("MVNW_VERBOSE"));
+
+    /** In-progress temp download file, cleaned up on SIGTERM/SIGINT by the shutdown hook. */
+    private static volatile Path inProgressTemp;
+
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            final Path temp = inProgressTemp;
+            if (temp != null) {
+                try {
+                    Files.deleteIfExists(temp);
+                } catch (IOException e) {
+                    // best effort during shutdown
+                }
+            }
+        }, "mvnw-downloader-shutdown"));
+    }
 
     /**
      * Main.
@@ -94,14 +117,35 @@ public final class MavenWrapperDownloader {
         Path temp = wrapperJarPath
                 .getParent()
                 .resolve(wrapperJarPath.getFileName() + "."
-                        + Long.toUnsignedString(ThreadLocalRandom.current().nextLong()) + ".tmp");
-        try (InputStream inStream = wrapperUrl.openStream()) {
+                        + UUID.randomUUID() + ".tmp");
+        inProgressTemp = temp;
+        final URLConnection connection = wrapperUrl.openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
+        try (InputStream inStream = connection.getInputStream()) {
             Files.copy(inStream, temp, StandardCopyOption.REPLACE_EXISTING);
             Files.move(temp, wrapperJarPath, StandardCopyOption.REPLACE_EXISTING);
         } finally {
             Files.deleteIfExists(temp);
+            inProgressTemp = null;
         }
         log(" - Downloader complete");
+    }
+
+    /**
+     * Read an integer from an environment variable, falling back to a default.
+     *
+     * @param name the env var name
+     * @param defaultValue the default value
+     * @return the value
+     */
+    private static int intFromEnv(String name, int defaultValue) {
+        try {
+            final String value = System.getenv(name);
+            return value == null ? defaultValue : Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 
     /**

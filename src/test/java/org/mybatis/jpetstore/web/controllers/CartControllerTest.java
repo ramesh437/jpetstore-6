@@ -35,6 +35,10 @@ import org.springframework.ui.Model;
 
 /**
  * The Class CartControllerTest.
+ *
+ * <p>
+ * {@code HttpSession} is mocked here; at runtime the container session is transparently backed by Memorystore for
+ * Redis through Spring Session (see {@code RedisSessionConfig}), so no controller-level session API change is needed.
  */
 @ExtendWith(MockitoExtension.class)
 class CartControllerTest {

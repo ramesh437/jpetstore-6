@@ -15,8 +15,11 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableList;
+
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
@@ -48,11 +51,29 @@ public class AccountController {
   /** The edit account view. */
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
+  /** Cache key for the language list. */
+  private static final String LANGUAGES_KEY = "languages";
+  /** Cache key for the category list. */
+  private static final String CATEGORIES_KEY = "categories";
+
+  /** Bounded reference data cache (max 10 entries) to prevent unbounded memory growth. */
+  private static final LoadingCache<String, List<String>> REFERENCE_DATA = CacheBuilder.newBuilder().maximumSize(10)
+      .build(new CacheLoader<String, List<String>>() {
+        @Override
+        public List<String> load(String key) {
+          if (LANGUAGES_KEY.equals(key)) {
+            return ImmutableList.of("english", "japanese");
+          } else if (CATEGORIES_KEY.equals(key)) {
+            return ImmutableList.of("FISH", "DOGS", "REPTILES", "CATS", "BIRDS");
+          }
+          return ImmutableList.of();
+        }
+      });
+
   /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
+  private static final List<String> LANGUAGE_LIST = REFERENCE_DATA.getUnchecked(LANGUAGES_KEY);
   /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  private static final List<String> CATEGORY_LIST = REFERENCE_DATA.getUnchecked(CATEGORIES_KEY);
 
   /** The account service. */
   @Autowired

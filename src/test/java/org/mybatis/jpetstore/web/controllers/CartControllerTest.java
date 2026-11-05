@@ -20,7 +20,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,7 +51,7 @@ class CartControllerTest {
    */
   @Test
   void viewCartReturnsCartView() {
-    HttpSession session = mock(HttpSession.class);
+    var session = SessionTestSupport.newSession();
     Cart cart = new Cart();
     when(session.getAttribute("cart")).thenReturn(cart);
     Model model = new ExtendedModelMap();
@@ -68,7 +67,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNullIdReturnsError() {
-    HttpSession session = mock(HttpSession.class);
+    var session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
 
     String view = cartController.addItemToCart(null, session, model);
@@ -82,7 +81,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNewIdFetchesItemFromCatalogAndAddsToCart() {
-    HttpSession session = mock(HttpSession.class);
+    var session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
@@ -107,7 +106,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithExistingIdIncrementsQuantityWithoutCallingCatalog() {
-    HttpSession session = mock(HttpSession.class);
+    var session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
@@ -129,7 +128,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNullIdReturnsError() {
-    HttpSession session = mock(HttpSession.class);
+    var session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
 
     String view = cartController.removeItemFromCart(null, session, model);
@@ -143,7 +142,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithExistingIdRemovesItemFromCart() {
-    HttpSession session = mock(HttpSession.class);
+    var session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
@@ -165,7 +164,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNonExistentIdReturnsError() {
-    HttpSession session = mock(HttpSession.class);
+    var session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
@@ -182,7 +181,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesUpdatesQuantity() {
-    HttpSession session = mock(HttpSession.class);
+    var session = SessionTestSupport.newSession();
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -206,7 +205,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesRemovesItemWhenQuantityLessThanOne() {
-    HttpSession session = mock(HttpSession.class);
+    var session = SessionTestSupport.newSession();
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -229,7 +228,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesIgnoresInvalidNumericInput() {
-    HttpSession session = mock(HttpSession.class);
+    var session = SessionTestSupport.newSession();
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -252,7 +251,7 @@ class CartControllerTest {
    */
   @Test
   void checkOutReturnsCheckoutViewWithCartFromSession() {
-    HttpSession session = mock(HttpSession.class);
+    var session = SessionTestSupport.newSession();
     Cart cart = new Cart();
     when(session.getAttribute("cart")).thenReturn(cart);
     Model model = new ExtendedModelMap();
@@ -268,7 +267,7 @@ class CartControllerTest {
    */
   @Test
   void checkOutWithNoExistingCartCreatesNewCartInSession() {
-    HttpSession session = mock(HttpSession.class);
+    var session = SessionTestSupport.newSession();
     when(session.getAttribute("cart")).thenReturn(null);
     Model model = new ExtendedModelMap();
 

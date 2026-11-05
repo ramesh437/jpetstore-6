@@ -83,7 +83,12 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is not hard-coded: it is supplied at runtime (e.g. a Google Secret Manager secret exposed as the
+    // JPETSTORE_TEST_ACID_PASSWORD environment variable); otherwise the seeded fixture value is read from the test DB.
+    String password = System.getenv("JPETSTORE_TEST_ACID_PASSWORD");
+    if (password == null || password.isEmpty()) {
+      password = jdbcTemplate.queryForObject("SELECT password FROM signon WHERE username = ?", String.class, username);
+    }
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

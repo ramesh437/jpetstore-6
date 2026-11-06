@@ -83,7 +83,12 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is externalized: resolved at runtime from a value provisioned from Google Secret Manager
+    // (e.g. injected as env var TEST_ACCOUNT_PASSWORD or the system property test.account.password via the
+    // Spring Cloud GCP Secret Manager "sm://" property source / secret volume mapping).
+    String password = System.getProperty("test.account.password", System.getenv("TEST_ACCOUNT_PASSWORD"));
+    org.junit.jupiter.api.Assumptions.assumeTrue(password != null && !password.isEmpty(),
+        "Test account password not provided from Google Secret Manager (TEST_ACCOUNT_PASSWORD)");
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

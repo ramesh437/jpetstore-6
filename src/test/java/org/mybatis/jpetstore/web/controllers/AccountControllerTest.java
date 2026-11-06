@@ -33,6 +33,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.service.AccountService;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 
@@ -198,9 +199,9 @@ class AccountControllerTest {
    */
   @Test
   void editAccountFormWithoutSessionReturnsEditAccountViewWithoutAccount() {
-    HttpSession session = mock(HttpSession.class);
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
-    when(session.getAttribute("accountBean")).thenReturn(null);
+    session.removeAttribute("accountBean");
 
     String view = accountController.editAccountForm(session, model);
 

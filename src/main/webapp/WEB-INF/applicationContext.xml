@@ -38,6 +38,12 @@
         <property name="dataSource" ref="dataSource" />
     </bean>
 
+    <!-- enable annotation processing (required for the Redis-backed HTTP session configuration) -->
+    <context:annotation-config />
+
+    <!-- HTTP session state externalized to Memorystore for Redis (Spring Session); see RedisSessionConfig -->
+    <bean class="org.mybatis.jpetstore.web.configuration.RedisSessionConfig" />
+
     <!-- enable component scanning and autowire (beware that this does not enable mapper scanning!) -->
     <context:component-scan base-package="org.mybatis.jpetstore.service" />
 

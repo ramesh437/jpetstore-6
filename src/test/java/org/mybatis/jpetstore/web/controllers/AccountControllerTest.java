@@ -38,6 +38,10 @@ import org.springframework.ui.Model;
 
 /**
  * The Class AccountControllerTest.
+ *
+ * <p>
+ * HttpSession is mocked here; in deployed environments the session is transparently backed by Spring Session
+ * with Memorystore for Redis, so controllers remain stateless and only exchange serializable session attributes.
  */
 @ExtendWith(MockitoExtension.class)
 class AccountControllerTest {

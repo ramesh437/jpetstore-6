@@ -22,10 +22,12 @@
        xmlns:jdbc="http://www.springframework.org/schema/jdbc"
        xmlns:context="http://www.springframework.org/schema/context"
        xmlns:mybatis="http://mybatis.org/schema/mybatis-spring"
+       xmlns:util="http://www.springframework.org/schema/util"
        xsi:schemaLocation="http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
      http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
      http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
      http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+     http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd
      http://mybatis.org/schema/mybatis-spring http://mybatis.org/schema/mybatis-spring.xsd">
 
     <jdbc:embedded-database id="dataSource">
@@ -48,6 +50,29 @@
     <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
         <property name="dataSource" ref="dataSource" />
         <property name="typeAliasesPackage" value="org.mybatis.jpetstore.domain" />
+    </bean>
+
+    <!-- resolve ${ENV_VAR:default} placeholders from environment variables / system properties -->
+    <context:property-placeholder />
+
+    <!-- Externalized HTTP session store: Google Cloud Memorystore for Redis (configured via environment) -->
+    <bean id="redisStandaloneConfiguration" class="org.springframework.data.redis.connection.RedisStandaloneConfiguration">
+        <constructor-arg index="0" type="java.lang.String" value="${REDIS_HOST:localhost}" />
+        <constructor-arg index="1" type="int" value="${REDIS_PORT:6379}" />
+        <property name="password">
+            <bean class="org.springframework.data.redis.connection.RedisPassword" factory-method="of">
+                <constructor-arg type="java.lang.String" value="${REDIS_PASSWORD:}" />
+            </bean>
+        </property>
+    </bean>
+    <bean id="redisConnectionFactory" class="org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory">
+        <constructor-arg ref="redisStandaloneConfiguration" />
+    </bean>
+    <!-- Memorystore does not allow the CONFIG command, so disable keyspace notification auto-configuration -->
+    <util:constant id="configureRedisAction" static-field="org.springframework.session.data.redis.config.ConfigureRedisAction.NO_OP" />
+    <bean class="org.springframework.session.data.redis.config.annotation.web.http.RedisHttpSessionConfiguration">
+        <property name="maxInactiveIntervalInSeconds" value="${SESSION_TIMEOUT_SECONDS:1800}" />
+        <property name="redisNamespace" value="${SESSION_REDIS_NAMESPACE:jpetstore:session}" />
     </bean>
 
     <!-- scan for mappers and let them be autowired -->

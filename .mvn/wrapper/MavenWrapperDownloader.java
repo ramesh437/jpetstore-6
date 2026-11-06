@@ -26,7 +26,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 
 /**
  * The Class MavenWrapperDownloader.
@@ -38,6 +38,14 @@ public final class MavenWrapperDownloader {
 
     /** The verbose. */
     private static final boolean VERBOSE = Boolean.parseBoolean(System.getenv("MVNW_VERBOSE"));
+
+    /** Connection timeout in milliseconds (override with MVNW_CONNECT_TIMEOUT_MS). */
+    private static final int CONNECT_TIMEOUT_MS =
+            Integer.parseInt(System.getenv().getOrDefault("MVNW_CONNECT_TIMEOUT_MS", "10000"));
+
+    /** Read timeout in milliseconds (override with MVNW_READ_TIMEOUT_MS). */
+    private static final int READ_TIMEOUT_MS =
+            Integer.parseInt(System.getenv().getOrDefault("MVNW_READ_TIMEOUT_MS", "30000"));
 
     /**
      * Main.
@@ -94,8 +102,11 @@ public final class MavenWrapperDownloader {
         Path temp = wrapperJarPath
                 .getParent()
                 .resolve(wrapperJarPath.getFileName() + "."
-                        + Long.toUnsignedString(ThreadLocalRandom.current().nextLong()) + ".tmp");
-        try (InputStream inStream = wrapperUrl.openStream()) {
+                        + UUID.randomUUID() + ".tmp");
+        final java.net.URLConnection connection = wrapperUrl.openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
+        try (InputStream inStream = connection.getInputStream()) {
             Files.copy(inStream, temp, StandardCopyOption.REPLACE_EXISTING);
             Files.move(temp, wrapperJarPath, StandardCopyOption.REPLACE_EXISTING);
         } finally {

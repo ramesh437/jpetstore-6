@@ -83,7 +83,14 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is not hard-coded: it is resolved at runtime from a secret injected by Google Secret Manager
+    // (e.g. Spring Cloud GCP "sm://" reference or secret mounted as the JPETSTORE_TEST_ACCOUNT_PASSWORD env var /
+    // system property). When no secret is supplied, the value seeded in the embedded test database is used.
+    String password = System.getProperty("JPETSTORE_TEST_ACCOUNT_PASSWORD",
+        System.getenv("JPETSTORE_TEST_ACCOUNT_PASSWORD"));
+    if (password == null || password.isEmpty()) {
+      password = jdbcTemplate.queryForObject("SELECT password FROM signon WHERE username = ?", String.class, username);
+    }
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

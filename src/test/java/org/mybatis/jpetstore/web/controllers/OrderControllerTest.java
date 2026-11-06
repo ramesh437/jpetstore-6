@@ -55,6 +55,7 @@ class OrderControllerTest {
    */
   @Test
   void listOrdersWithoutAuthReturnsError() {
+    // HttpSession is backed by Spring Session + Memorystore for Redis at runtime; no in-JVM session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
@@ -70,6 +71,7 @@ class OrderControllerTest {
    */
   @Test
   void newOrderFormWithoutAuthRedirects() {
+    // HttpSession is backed by Spring Session + Memorystore for Redis at runtime; no in-JVM session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
@@ -85,6 +87,7 @@ class OrderControllerTest {
    */
   @Test
   void newOrderFormWithAuthAndCartReturnsNewOrderView() {
+    // HttpSession is backed by Spring Session + Memorystore for Redis at runtime; no in-JVM session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -120,6 +123,7 @@ class OrderControllerTest {
    */
   @Test
   void listOrdersWithAuthReturnsOrderList() {
+    // HttpSession is backed by Spring Session + Memorystore for Redis at runtime; no in-JVM session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
@@ -143,6 +147,7 @@ class OrderControllerTest {
     // The @ModelAttribute Order is therefore all-null. The controller must use
     // the session order (which has the full billing address) and must NOT
     // overwrite it with the null-filled model attribute.
+    // HttpSession is backed by Spring Session + Memorystore for Redis at runtime; no in-JVM session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -185,6 +190,7 @@ class OrderControllerTest {
     // The controller must NOT overwrite the billing address stored in the session
     // with these null values, or the subsequent insertOrder will fail with a
     // NOT NULL constraint violation on BILLADDR1.
+    // HttpSession is backed by Spring Session + Memorystore for Redis at runtime; no in-JVM session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -233,6 +239,7 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithoutAuthRedirects() {
+    // HttpSession is backed by Spring Session + Memorystore for Redis at runtime; no in-JVM session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
@@ -247,6 +254,7 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithAuthAndMatchingUsernameReturnsViewOrder() {
+    // HttpSession is backed by Spring Session + Memorystore for Redis at runtime; no in-JVM session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
@@ -269,6 +277,7 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithAuthButDifferentUsernameReturnsError() {
+    // HttpSession is backed by Spring Session + Memorystore for Redis at runtime; no in-JVM session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();

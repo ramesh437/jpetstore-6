@@ -21,12 +21,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Authenticator;
 import java.net.PasswordAuthentication;
+import java.net.URLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 
 /**
  * The Class MavenWrapperDownloader.
@@ -35,6 +36,12 @@ public final class MavenWrapperDownloader {
 
     /** The wrapper version. */
     private static final String WRAPPER_VERSION = "3.3.4";
+
+    /** Connect timeout in milliseconds (override with MVNW_CONNECT_TIMEOUT_MS). */
+    private static final int CONNECT_TIMEOUT_MS = parseTimeout("MVNW_CONNECT_TIMEOUT_MS", 10000);
+
+    /** Read timeout in milliseconds (override with MVNW_READ_TIMEOUT_MS). */
+    private static final int READ_TIMEOUT_MS = parseTimeout("MVNW_READ_TIMEOUT_MS", 30000);
 
     /** The verbose. */
     private static final boolean VERBOSE = Boolean.parseBoolean(System.getenv("MVNW_VERBOSE"));
@@ -94,14 +101,29 @@ public final class MavenWrapperDownloader {
         Path temp = wrapperJarPath
                 .getParent()
                 .resolve(wrapperJarPath.getFileName() + "."
-                        + Long.toUnsignedString(ThreadLocalRandom.current().nextLong()) + ".tmp");
-        try (InputStream inStream = wrapperUrl.openStream()) {
+                        + UUID.randomUUID() + ".tmp");
+        URLConnection connection = wrapperUrl.openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
+        try (InputStream inStream = connection.getInputStream()) {
             Files.copy(inStream, temp, StandardCopyOption.REPLACE_EXISTING);
             Files.move(temp, wrapperJarPath, StandardCopyOption.REPLACE_EXISTING);
         } finally {
             Files.deleteIfExists(temp);
         }
         log(" - Downloader complete");
+    }
+
+    private static int parseTimeout(String envName, int defaultValue) {
+        String value = System.getenv(envName);
+        if (value != null) {
+            try {
+                return Integer.parseInt(value.trim());
+            } catch (NumberFormatException e) {
+                // fall through to default
+            }
+        }
+        return defaultValue;
     }
 
     /**

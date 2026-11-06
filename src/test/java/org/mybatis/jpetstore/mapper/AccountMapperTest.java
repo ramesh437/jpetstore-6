@@ -83,7 +83,9 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is externalized: resolved from the environment / system property (populated from Google Secret
+    // Manager, e.g. via Spring Cloud GCP "sm://" references) and otherwise from the seeded test database.
+    String password = resolveTestPassword(username);
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);
@@ -107,6 +109,21 @@ class AccountMapperTest {
     assertThat(account.isBannerOption()).isTrue();
     assertThat(account.getBannerName()).isEqualTo("<image src=\"/jpetstore/images/banner_cats.gif\">");
 
+  }
+
+  /**
+   * Resolves the test account password without embedding it in source code.
+   *
+   * @param username
+   *          the username
+   * @return the password
+   */
+  private String resolveTestPassword(String username) {
+    String password = System.getProperty("TEST_ACCOUNT_PASSWORD", System.getenv("TEST_ACCOUNT_PASSWORD"));
+    if (password == null || password.isEmpty()) {
+      password = jdbcTemplate.queryForObject("SELECT PASSWORD FROM SIGNON WHERE USERNAME = ?", String.class, username);
+    }
+    return password;
   }
 
   /**

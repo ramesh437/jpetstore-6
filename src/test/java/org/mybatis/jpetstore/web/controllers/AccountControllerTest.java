@@ -198,6 +198,7 @@ class AccountControllerTest {
    */
   @Test
   void editAccountFormWithoutSessionReturnsEditAccountViewWithoutAccount() {
+    // Session state is externalized to Memorystore for Redis (Spring Session); HttpSession is mocked here.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);

@@ -16,6 +16,7 @@
 package org.mybatis.jpetstore.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.Map;
 
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mybatis.jpetstore.domain.Account;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -39,6 +41,10 @@ class AccountMapperTest {
   /** The mapper. */
   @Autowired
   private AccountMapper mapper;
+
+  /** The environment used to resolve externalized (secret) values. */
+  @Autowired
+  private Environment environment;
 
   /** The jdbc template. */
   @Autowired
@@ -83,7 +89,11 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is resolved at runtime (Google Secret Manager via Spring Cloud GCP "sm://" property,
+    // or the JPETSTORE_TEST_ACID_PASSWORD environment variable) instead of being hard-coded.
+    String password = environment.getProperty("jpetstore.test.acid-password");
+    assumeTrue(password != null && !password.isEmpty(),
+        "Property 'jpetstore.test.acid-password' must be provided (e.g. from Google Secret Manager)");
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

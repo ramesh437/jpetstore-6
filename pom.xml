@@ -74,6 +74,9 @@
     <mockito.version>5.24.0</mockito.version>
     <slf4j.version>2.0.20</slf4j.version>
     <spring.version>5.3.39</spring.version>
+    <spring-session.version>2.7.4</spring-session.version>
+    <spring-data-redis.version>2.7.18</spring-data-redis.version>
+    <lettuce.version>6.1.10.RELEASE</lettuce.version>
 
     <!-- Plugin Versions -->
     <cargo-maven3-plugin.version>1.10.30</cargo-maven3-plugin.version>
@@ -101,6 +104,12 @@
   </dependencyManagement>
 
   <dependencies>
+
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>32.1.3-jre</version>
+    </dependency>
 
     <dependency>
       <groupId>org.mybatis</groupId>
@@ -138,6 +147,23 @@
       <groupId>org.springframework</groupId>
       <artifactId>spring-webmvc</artifactId>
       <version>${spring.version}</version>
+    </dependency>
+
+    <!-- Externalized HTTP session state (Google Cloud Memorystore for Redis) -->
+    <dependency>
+      <groupId>org.springframework.session</groupId>
+      <artifactId>spring-session-data-redis</artifactId>
+      <version>${spring-session.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.data</groupId>
+      <artifactId>spring-data-redis</artifactId>
+      <version>${spring-data-redis.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.lettuce</groupId>
+      <artifactId>lettuce-core</artifactId>
+      <version>${lettuce.version}</version>
     </dependency>
 
     <dependency>

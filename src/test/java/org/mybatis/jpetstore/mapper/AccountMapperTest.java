@@ -83,7 +83,12 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is resolved at runtime (injected from Google Secret Manager via environment/system property);
+    // falls back to the value stored in the test fixture database - never hard-coded in source.
+    String password = System.getProperty("TEST_ACCOUNT_PASSWORD", System.getenv("TEST_ACCOUNT_PASSWORD"));
+    if (password == null || password.isEmpty()) {
+      password = jdbcTemplate.queryForObject("SELECT password FROM signon WHERE username = ?", String.class, username);
+    }
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

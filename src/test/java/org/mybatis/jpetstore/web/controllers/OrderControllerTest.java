@@ -17,7 +17,6 @@ package org.mybatis.jpetstore.web.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -55,7 +54,7 @@ class OrderControllerTest {
    */
   @Test
   void listOrdersWithoutAuthReturnsError() {
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
 
@@ -70,7 +69,7 @@ class OrderControllerTest {
    */
   @Test
   void newOrderFormWithoutAuthRedirects() {
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
     when(session.getAttribute("cart")).thenReturn(new Cart());
@@ -85,7 +84,7 @@ class OrderControllerTest {
    */
   @Test
   void newOrderFormWithAuthAndCartReturnsNewOrderView() {
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
 
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
@@ -120,7 +119,7 @@ class OrderControllerTest {
    */
   @Test
   void listOrdersWithAuthReturnsOrderList() {
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
     account.setUsername("j2ee");
@@ -143,7 +142,7 @@ class OrderControllerTest {
     // The @ModelAttribute Order is therefore all-null. The controller must use
     // the session order (which has the full billing address) and must NOT
     // overwrite it with the null-filled model attribute.
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
 
     org.mybatis.jpetstore.domain.Order sessionOrder = new org.mybatis.jpetstore.domain.Order();
@@ -185,7 +184,7 @@ class OrderControllerTest {
     // The controller must NOT overwrite the billing address stored in the session
     // with these null values, or the subsequent insertOrder will fail with a
     // NOT NULL constraint violation on BILLADDR1.
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
 
     org.mybatis.jpetstore.domain.Order sessionOrder = new org.mybatis.jpetstore.domain.Order();
@@ -233,7 +232,7 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithoutAuthRedirects() {
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
 
@@ -247,7 +246,7 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithAuthAndMatchingUsernameReturnsViewOrder() {
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
     account.setUsername("j2ee");
@@ -269,7 +268,7 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithAuthButDifferentUsernameReturnsError() {
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
     account.setUsername("j2ee");

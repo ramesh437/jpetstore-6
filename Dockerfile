@@ -17,5 +17,5 @@
 FROM openjdk:25
 COPY . /usr/src/myapp
 WORKDIR /usr/src/myapp
-RUN ./mvnw clean package
-CMD ./mvnw cargo:run -P tomcat9
+RUN ./mvnw clean package -DskipTests
+CMD ["java", "-jar", "target/jpetstore.jar"]

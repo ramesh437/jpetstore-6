@@ -198,7 +198,7 @@ class AccountControllerTest {
    */
   @Test
   void editAccountFormWithoutSessionReturnsEditAccountViewWithoutAccount() {
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = SessionTestSupport.newSession();
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
 

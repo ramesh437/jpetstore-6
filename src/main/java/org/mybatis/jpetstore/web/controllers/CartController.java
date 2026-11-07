@@ -47,7 +47,7 @@ public class CartController {
   private CatalogService catalogService;
 
   /**
-   * Get cart.
+   * Get cart. The session is backed by Memorystore for Redis (Spring Session), so the controller stays stateless.
    *
    * @param session
    *          the session
@@ -106,6 +106,8 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    // Re-set the attribute so the mutated cart is persisted to the external (Redis) session store
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -135,6 +137,8 @@ public class CartController {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
     }
+    // Re-set the attribute so the mutated cart is persisted to the external (Redis) session store
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -168,6 +172,8 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    // Re-set the attribute so the mutated cart is persisted to the external (Redis) session store
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }

@@ -77,13 +77,27 @@ class AccountMapperTest {
   }
 
   /**
+   * Resolves a secret value supplied by Google Secret Manager (exposed as a system property or environment variable).
+   * Falls back to the embedded test fixture convention (password equals username in the HSQLDB seed data).
+   */
+  private static String resolveSecret(String propertyName, String envName, String fixtureDefault) {
+    String value = System.getProperty(propertyName);
+    if (value == null || value.isEmpty()) {
+      value = System.getenv(envName);
+    }
+    return (value == null || value.isEmpty()) ? fixtureDefault : value;
+  }
+
+  /**
    * Gets the account by username and password.
    */
   @Test
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is externalized: supplied at runtime from Google Secret Manager (e.g. the secret mounted/injected as
+    // the TEST_ACCOUNT_PASSWORD environment variable or the test.account.password system property).
+    String password = resolveSecret("test.account.password", "TEST_ACCOUNT_PASSWORD", username);
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

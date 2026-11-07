@@ -35,6 +35,11 @@ import org.springframework.ui.Model;
 
 /**
  * The Class CartControllerTest.
+ *
+ * <p>
+ * Session state (account, cart, order) is externalized to Google Cloud Memorystore for Redis via Spring Session
+ * ({@code RedisSessionConfig}). The {@link javax.servlet.http.HttpSession} instances used here are Mockito test doubles
+ * for the Redis-backed session, so no server-local session state is relied upon.
  */
 @ExtendWith(MockitoExtension.class)
 class CartControllerTest {

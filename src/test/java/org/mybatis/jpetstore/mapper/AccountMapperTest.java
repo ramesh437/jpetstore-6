@@ -45,6 +45,20 @@ class AccountMapperTest {
   private JdbcTemplate jdbcTemplate;
 
   /**
+   * Resolve a secret value injected from Google Secret Manager (as env var or system property).
+   */
+  private static String resolveSecret(String envName, String propertyName) {
+    String value = System.getenv(envName);
+    if (value == null || value.isEmpty()) {
+      value = System.getProperty(propertyName);
+    }
+    if (value == null || value.isEmpty()) {
+      throw new IllegalStateException("Secret '" + envName + "' must be provided via Google Secret Manager");
+    }
+    return value;
+  }
+
+  /**
    * Gets the account by username.
    */
   @Test
@@ -83,7 +97,10 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is externalized: it is supplied at runtime from Google Secret Manager (exposed to the process as
+    // the TEST_ACCOUNT_PASSWORD environment variable / test.account.password system property) instead of being
+    // hard-coded in source.
+    String password = resolveSecret("TEST_ACCOUNT_PASSWORD", "test.account.password");
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

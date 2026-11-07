@@ -20,6 +20,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import javax.servlet.http.HttpServletRequest;
+// Spring Session (Redis) transparently provides the javax.servlet.http.HttpSession API
 import javax.servlet.http.HttpSession;
 
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,7 @@ class CartControllerTest {
    */
   @Test
   void viewCartReturnsCartView() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     Cart cart = new Cart();
     when(session.getAttribute("cart")).thenReturn(cart);
@@ -68,6 +70,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNullIdReturnsError() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -82,6 +85,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNewIdFetchesItemFromCatalogAndAddsToCart() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -107,6 +111,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithExistingIdIncrementsQuantityWithoutCallingCatalog() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -129,6 +134,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNullIdReturnsError() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -143,6 +149,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithExistingIdRemovesItemFromCart() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -165,6 +172,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNonExistentIdReturnsError() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -182,6 +190,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesUpdatesQuantity() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
@@ -206,6 +215,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesRemovesItemWhenQuantityLessThanOne() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
@@ -229,6 +239,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesIgnoresInvalidNumericInput() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
@@ -252,6 +263,7 @@ class CartControllerTest {
    */
   @Test
   void checkOutReturnsCheckoutViewWithCartFromSession() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     Cart cart = new Cart();
     when(session.getAttribute("cart")).thenReturn(cart);
@@ -268,6 +280,7 @@ class CartControllerTest {
    */
   @Test
   void checkOutWithNoExistingCartCreatesNewCartInSession() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     when(session.getAttribute("cart")).thenReturn(null);
     Model model = new ExtendedModelMap();

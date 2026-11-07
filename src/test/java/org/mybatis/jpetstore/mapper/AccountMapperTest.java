@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mybatis.jpetstore.domain.Account;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -43,6 +44,15 @@ class AccountMapperTest {
   /** The jdbc template. */
   @Autowired
   private JdbcTemplate jdbcTemplate;
+
+  /**
+   * Password of the seeded test account. Resolved from the Spring Environment (property
+   * {@code jpetstore.test.account.password} or env var {@code JPETSTORE_TEST_ACCOUNT_PASSWORD}, which can be injected
+   * from Google Secret Manager, e.g. {@code ${sm://jpetstore-test-account-password}} with Spring Cloud GCP). The
+   * default only matches the seed data of the embedded in-memory HSQL test database.
+   */
+  @Value("${jpetstore.test.account.password:ACID}")
+  private String testAccountPassword;
 
   /**
    * Gets the account by username.
@@ -83,7 +93,7 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    String password = testAccountPassword;
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

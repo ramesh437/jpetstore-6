@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+// Spring Session (Redis) transparently provides the javax.servlet.http.HttpSession API
 import javax.servlet.http.HttpSession;
 
 import org.junit.jupiter.api.Test;
@@ -66,6 +67,7 @@ class AccountControllerTest {
    */
   @Test
   void signonWithInvalidCredentialsReturnsSignonView() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(accountService.getAccount("bad", "bad")).thenReturn(null);
@@ -81,6 +83,7 @@ class AccountControllerTest {
    */
   @Test
   void signonWithValidCredentialsRedirects() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     Account account = new Account();
@@ -111,6 +114,7 @@ class AccountControllerTest {
    */
   @Test
   void signoffInvalidatesSessionAndRedirectsToCatalog() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
 
     String view = accountController.signoff(session);
@@ -161,6 +165,7 @@ class AccountControllerTest {
   void editAccountRedirectsToEditPageNotCatalog() {
     // After saving account, should redirect to /account/edit so the user stays
     // on their profile page (the IT test expects the edit form to reload).
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     Account account = new Account();
     account.setUsername("j2ee");
@@ -178,6 +183,7 @@ class AccountControllerTest {
    */
   @Test
   void editAccountFormWithSessionReturnsEditAccountViewWithAccount() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     Account account = new Account();
@@ -198,6 +204,7 @@ class AccountControllerTest {
    */
   @Test
   void editAccountFormWithoutSessionReturnsEditAccountViewWithoutAccount() {
+    // HttpSession is backed by Spring Session / Memorystore for Redis at runtime; mocked here to keep the unit test stateless
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);

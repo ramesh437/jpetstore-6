@@ -18,8 +18,12 @@ package org.mybatis.jpetstore.web.controllers;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
@@ -48,11 +52,22 @@ public class AccountController {
   /** The edit account view. */
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
+  /** Bounded cache (max 10 entries, expiring) holding the reference lists. */
+  private static final Cache<String, List<String>> REFERENCE_LISTS = CacheBuilder.newBuilder().maximumSize(10)
+      .expireAfterAccess(1, TimeUnit.HOURS).build();
   /** The language list. */
   private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
   /** The category list. */
   private static final List<String> CATEGORY_LIST = Collections
       .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+
+  private static List<String> languageList() {
+    return REFERENCE_LISTS.asMap().computeIfAbsent("languages", k -> LANGUAGE_LIST);
+  }
+
+  private static List<String> categoryList() {
+    return REFERENCE_LISTS.asMap().computeIfAbsent("categories", k -> CATEGORY_LIST);
+  }
 
   /** The account service. */
   @Autowired
@@ -123,8 +138,8 @@ public class AccountController {
    */
   @GetMapping("/new")
   public String newAccountForm(Model model) {
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", languageList());
+    model.addAttribute("categories", categoryList());
     model.addAttribute("account", new Account());
     return NEW_ACCOUNT_VIEW;
   }
@@ -159,8 +174,8 @@ public class AccountController {
     if (accountSession != null) {
       model.addAttribute("account", accountSession.getAccount());
     }
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", languageList());
+    model.addAttribute("categories", categoryList());
     return EDIT_ACCOUNT_VIEW;
   }
 

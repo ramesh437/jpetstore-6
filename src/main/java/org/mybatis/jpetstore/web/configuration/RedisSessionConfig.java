@@ -1,0 +1,87 @@
+/*
+ *    Copyright 2010-2026 the original author or authors.
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License");
+ *    you may not use this file except in compliance with the License.
+ *    You may obtain a copy of the License at
+ *
+ *       https://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
+ */
+package org.mybatis.jpetstore.web.configuration;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisPassword;
+import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.session.data.redis.config.ConfigureRedisAction;
+import org.springframework.session.data.redis.config.annotation.web.http.EnableRedisHttpSession;
+
+/**
+ * Externalizes HTTP session state to Google Cloud Memorystore for Redis (Spring Session), so that the application
+ * instances are stateless and can be scaled horizontally.
+ *
+ * <p>
+ * Configuration is read from environment variables (or JVM system properties with the same name):
+ * </p>
+ * <ul>
+ * <li>{@code REDIS_HOST} - Memorystore instance host/IP (default {@code localhost})</li>
+ * <li>{@code REDIS_PORT} - Redis port (default {@code 6379})</li>
+ * <li>{@code REDIS_PASSWORD} - Redis AUTH string (optional; inject from Secret Manager)</li>
+ * <li>{@code REDIS_SSL} - {@code true} to enable in-transit encryption (default {@code false})</li>
+ * <li>{@code SESSION_NAMESPACE} - Redis key namespace (default {@code jpetstore:session})</li>
+ * <li>{@code SESSION_TIMEOUT_SECONDS} - session inactivity timeout (default {@code 1800})</li>
+ * </ul>
+ */
+@Configuration
+@EnableRedisHttpSession(redisNamespace = "jpetstore:session", maxInactiveIntervalInSeconds = 1800)
+public class RedisSessionConfig {
+
+  private static String env(String name, String defaultValue) {
+    String value = System.getenv(name);
+    if (value == null || value.trim().isEmpty()) {
+      value = System.getProperty(name);
+    }
+    return value == null || value.trim().isEmpty() ? defaultValue : value.trim();
+  }
+
+  /**
+   * Redis connection factory pointing to Memorystore for Redis.
+   *
+   * @return the connection factory
+   */
+  @Bean
+  public RedisConnectionFactory redisConnectionFactory() {
+    RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(env("REDIS_HOST", "localhost"),
+        Integer.parseInt(env("REDIS_PORT", "6379")));
+    String password = env("REDIS_PASSWORD", null);
+    if (password != null) {
+      config.setPassword(RedisPassword.of(password));
+    }
+    LettuceClientConfiguration.LettuceClientConfigurationBuilder builder = LettuceClientConfiguration.builder();
+    if (Boolean.parseBoolean(env("REDIS_SSL", "false"))) {
+      builder.useSsl();
+    }
+    return new LettuceConnectionFactory(config, builder.build());
+  }
+
+  /**
+   * Managed Redis services such as Memorystore do not allow the CONFIG command, so disable the automatic keyspace
+   * notification configuration.
+   *
+   * @return a no-op action
+   */
+  @Bean
+  public static ConfigureRedisAction configureRedisAction() {
+    return ConfigureRedisAction.NO_OP;
+  }
+
+}

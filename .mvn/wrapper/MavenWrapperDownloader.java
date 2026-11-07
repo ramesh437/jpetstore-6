@@ -21,20 +21,42 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Authenticator;
 import java.net.PasswordAuthentication;
+import java.net.URLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 
 /**
  * The Class MavenWrapperDownloader.
  */
 public final class MavenWrapperDownloader {
 
+    /** Connect timeout in milliseconds (override with MVNW_CONNECT_TIMEOUT_MS). */
+    private static final int CONNECT_TIMEOUT_MS = getTimeout("MVNW_CONNECT_TIMEOUT_MS", 10000);
+
+    /** Read timeout in milliseconds (override with MVNW_READ_TIMEOUT_MS). */
+    private static final int READ_TIMEOUT_MS = getTimeout("MVNW_READ_TIMEOUT_MS", 30000);
+
+    private static int getTimeout(String name, int defaultValue) {
+        String value = System.getenv(name);
+        if (value != null) {
+            try {
+                return Integer.parseInt(value.trim());
+            } catch (NumberFormatException e) {
+                // fall through to default
+            }
+        }
+        return defaultValue;
+    }
+
     /** The wrapper version. */
     private static final String WRAPPER_VERSION = "3.3.4";
+
+    /** In-progress temp download file, cleaned up on shutdown (SIGTERM/SIGINT). */
+    private static volatile Path tempFile;
 
     /** The verbose. */
     private static final boolean VERBOSE = Boolean.parseBoolean(System.getenv("MVNW_VERBOSE"));
@@ -45,6 +67,17 @@ public final class MavenWrapperDownloader {
      * @param args the args
      */
     public static void main(String[] args) {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            Path t = tempFile;
+            if (t != null) {
+                try {
+                    Files.deleteIfExists(t);
+                } catch (IOException e) {
+                    // best effort cleanup during shutdown
+                }
+            }
+        }, "mvnw-downloader-shutdown"));
+
         log("Apache Maven Wrapper Downloader " + WRAPPER_VERSION);
 
         if (args.length != 2) {
@@ -94,14 +127,30 @@ public final class MavenWrapperDownloader {
         Path temp = wrapperJarPath
                 .getParent()
                 .resolve(wrapperJarPath.getFileName() + "."
-                        + Long.toUnsignedString(ThreadLocalRandom.current().nextLong()) + ".tmp");
-        try (InputStream inStream = wrapperUrl.openStream()) {
+                        + UUID.randomUUID() + ".tmp");
+        tempFile = temp;
+        try (InputStream inStream = openConnectionWithTimeouts(wrapperUrl)) {
             Files.copy(inStream, temp, StandardCopyOption.REPLACE_EXISTING);
             Files.move(temp, wrapperJarPath, StandardCopyOption.REPLACE_EXISTING);
         } finally {
             Files.deleteIfExists(temp);
+            tempFile = null;
         }
         log(" - Downloader complete");
+    }
+
+    /**
+     * Open an input stream with explicit connect and read timeouts.
+     *
+     * @param url the url
+     * @return the input stream
+     * @throws IOException the io exception
+     */
+    private static InputStream openConnectionWithTimeouts(URL url) throws IOException {
+        URLConnection connection = url.openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
+        return connection.getInputStream();
     }
 
     /**

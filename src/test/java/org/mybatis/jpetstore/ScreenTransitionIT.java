@@ -38,6 +38,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,15 +50,31 @@ import org.openqa.selenium.By;
 @ExtendWith(ScreenShooterExtension.class)
 class ScreenTransitionIT {
 
+  private static EmbeddedServer server;
+
   /**
    * Setup selenide.
    */
   @BeforeAll
-  static void setupSelenide() {
+  static void setupSelenide() throws Exception {
+    server = EmbeddedServer.start(8080, "");
     browser = CHROME;
     headless = true;
     timeout = TimeUnit.SECONDS.toMillis(10);
-    baseUrl = "http://127.0.0.1:8080/jpetstore";
+    baseUrl = "http://127.0.0.1:8080";
+  }
+
+  /**
+   * Stop the embedded server.
+   *
+   * @throws Exception
+   *           if the server cannot be stopped
+   */
+  @AfterAll
+  static void stopServer() throws Exception {
+    if (server != null) {
+      server.stop();
+    }
   }
 
   /**
@@ -215,7 +232,7 @@ class ScreenTransitionIT {
     $(By.cssSelector("#Catalog h3")).shouldBe(text("User Information"));
 
     // Create a new user
-    String userId = String.valueOf(System.currentTimeMillis());
+    String userId = String.valueOf(java.time.Instant.now(java.time.Clock.systemUTC()).toEpochMilli());
     $(By.name("username")).setValue(userId);
     $(By.name("password")).setValue("password");
     $(By.name("repeatedPassword")).setValue("password");

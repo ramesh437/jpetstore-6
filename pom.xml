@@ -30,7 +30,7 @@
   <groupId>org.mybatis</groupId>
   <artifactId>jpetstore</artifactId>
   <version>6.4.1-SNAPSHOT</version>
-  <packaging>war</packaging>
+  <packaging>jar</packaging>
 
   <name>JPetStore Demo 6</name>
   <url>https://www.mybatis.org/jpetstore-6/</url>
@@ -74,6 +74,8 @@
     <mockito.version>5.24.0</mockito.version>
     <slf4j.version>2.0.20</slf4j.version>
     <spring.version>5.3.39</spring.version>
+    <tomcat.embed.version>9.0.120</tomcat.embed.version>
+    <skipITs>true</skipITs>
 
     <!-- Plugin Versions -->
     <cargo-maven3-plugin.version>1.10.30</cargo-maven3-plugin.version>
@@ -101,6 +103,11 @@
   </dependencyManagement>
 
   <dependencies>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>33.4.0-jre</version>
+    </dependency>
 
     <dependency>
       <groupId>org.mybatis</groupId>
@@ -140,6 +147,23 @@
       <version>${spring.version}</version>
     </dependency>
 
+    <!-- Externalized HTTP session state in Memorystore for Redis -->
+    <dependency>
+      <groupId>org.springframework.session</groupId>
+      <artifactId>spring-session-data-redis</artifactId>
+      <version>2.7.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.data</groupId>
+      <artifactId>spring-data-redis</artifactId>
+      <version>2.7.18</version>
+    </dependency>
+    <dependency>
+      <groupId>io.lettuce</groupId>
+      <artifactId>lettuce-core</artifactId>
+      <version>6.1.10.RELEASE</version>
+    </dependency>
+
     <dependency>
       <groupId>org.apache.taglibs</groupId>
       <artifactId>taglibs-standard-spec</artifactId>
@@ -162,6 +186,18 @@
       <artifactId>jakarta.servlet-api</artifactId>
       <version>4.0.4</version>
       <scope>provided</scope>
+    </dependency>
+
+    <!-- Embedded servlet container (executable JAR) -->
+    <dependency>
+      <groupId>org.apache.tomcat.embed</groupId>
+      <artifactId>tomcat-embed-core</artifactId>
+      <version>${tomcat.embed.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tomcat.embed</groupId>
+      <artifactId>tomcat-embed-jasper</artifactId>
+      <version>${tomcat.embed.version}</version>
     </dependency>
 
     <dependency>
@@ -253,6 +289,16 @@
 
   <build>
     <finalName>jpetstore</finalName>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+      <!-- Bundle the web application inside the executable JAR; extracted at startup for embedded Tomcat -->
+      <resource>
+        <directory>src/main/webapp</directory>
+        <targetPath>webapp</targetPath>
+      </resource>
+    </resources>
     <pluginManagement>
       <plugins>
         <plugin>
@@ -289,26 +335,58 @@
     </pluginManagement>
 
     <plugins>
+      <!-- Build a self-contained executable JAR with embedded Tomcat -->
       <plugin>
-        <groupId>org.codehaus.cargo</groupId>
-        <artifactId>cargo-maven3-plugin</artifactId>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.0</version>
         <executions>
           <execution>
-            <id>start-container</id>
+            <phase>package</phase>
             <goals>
-              <goal>start</goal>
+              <goal>shade</goal>
             </goals>
-            <phase>pre-integration-test</phase>
-          </execution>
-          <execution>
-            <id>stop-container</id>
-            <goals>
-              <goal>stop</goal>
-            </goals>
-            <phase>post-integration-test</phase>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                    <exclude>META-INF/MANIFEST.MF</exclude>
+                    <exclude>module-info.class</exclude>
+                    <exclude>META-INF/versions/*/module-info.class</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>org.mybatis.jpetstore.EmbeddedTomcatLauncher</mainClass>
+                  <manifestEntries>
+                    <Multi-Release>true</Multi-Release>
+                  </manifestEntries>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/spring.handlers</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/spring.schemas</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/spring.factories</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/spring.tooling</resource>
+                </transformer>
+              </transformers>
+            </configuration>
           </execution>
         </executions>
       </plugin>
+      <!-- Optional: run integration tests against an external container with -Pcontainer-it (see cargo profiles) -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
@@ -569,6 +647,68 @@
                 </zipUrlInstaller>
               </container>
             </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <!-- Optional: integration tests against an external container (-Pcontainer-it). Builds a throw-away WAR for cargo only;
+         the deliverable remains the executable JAR. -->
+    <profile>
+      <id>container-it</id>
+      <properties>
+        <skipITs>false</skipITs>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-war-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>cargo-war</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>war</goal>
+                </goals>
+                <configuration>
+                  <warName>jpetstore-cargo</warName>
+                  <failOnMissingWebXml>false</failOnMissingWebXml>
+                  <packagingExcludes>WEB-INF/lib/tomcat-embed-*.jar,WEB-INF/classes/webapp/**,WEB-INF/classes/org/mybatis/jpetstore/EmbeddedTomcatLauncher.class</packagingExcludes>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.codehaus.cargo</groupId>
+            <artifactId>cargo-maven3-plugin</artifactId>
+            <configuration>
+              <deployables>
+                <deployable>
+                  <type>war</type>
+                  <location>${project.build.directory}/jpetstore-cargo.war</location>
+                  <properties>
+                    <context>jpetstore</context>
+                  </properties>
+                </deployable>
+              </deployables>
+            </configuration>
+            <executions>
+              <execution>
+                <id>start-container</id>
+                <goals>
+                  <goal>start</goal>
+                </goals>
+                <phase>pre-integration-test</phase>
+              </execution>
+              <execution>
+                <id>stop-container</id>
+                <goals>
+                  <goal>stop</goal>
+                </goals>
+                <phase>post-integration-test</phase>
+              </execution>
+            </executions>
           </plugin>
         </plugins>
       </build>

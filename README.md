@@ -17,7 +17,20 @@ JPetStore 6 is a full web application built on top of MyBatis 3, Spring 5 and St
 - JPetstore with Vaadin and Spring Boot with Java Config https://github.com/igor-baiborodine/jpetstore-6-vaadin-spring-boot
 - JPetstore on MyBatis Spring Boot Starter https://github.com/kazuki43zoo/mybatis-spring-boot-jpetstore
 
-## Run on Application Server
+## Run as executable JAR (embedded Tomcat, GKE / Cloud Run / App Engine flexible)
+The application is packaged as a self-contained executable JAR with an embedded Tomcat server.
+
+```
+$ ./mvnw clean package
+$ PORT=8080 java -jar target/jpetstore.jar
+```
+
+- `PORT` (default `8080`) - HTTP port (set automatically by Cloud Run)
+- `CONTEXT_PATH` (default empty = root context)
+
+Integration tests against an external container can still be run with `-P container-it` (e.g. `./mvnw verify -P container-it,tomcat9`).
+
+## Run on Application Server (legacy, via cargo)
 Running JPetStore sample under Tomcat (using the [cargo-maven2-plugin](https://codehaus-cargo.github.io/cargo/Maven2+plugin.html)).
 
 - Clone this repository
@@ -26,17 +39,17 @@ Running JPetStore sample under Tomcat (using the [cargo-maven2-plugin](https://c
   $ git clone https://github.com/mybatis/jpetstore-6.git
   ```
 
-- Build war file
+- Build the web application
 
   ```
   $ cd jpetstore-6
-  $ ./mvnw clean package
+  $ ./mvnw clean package -P container-it
   ```
 
 - Startup the Tomcat server and deploy web application
 
   ```
-  $ ./mvnw cargo:run -P tomcat9
+  $ ./mvnw cargo:run -P container-it,tomcat9
   ```
 
   > Note:

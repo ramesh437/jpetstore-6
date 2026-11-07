@@ -77,13 +77,31 @@ class AccountMapperTest {
   }
 
   /**
+   * Resolves the test credential from externalized configuration instead of embedding it in source code. The value is
+   * expected to be supplied by Google Secret Manager (e.g. injected as the TEST_ACCOUNT_PASSWORD environment variable
+   * or the test.account.password system property by Spring Cloud GCP / the runtime). When unset, the seed-data
+   * convention (password equals user id) is used.
+   *
+   * @param username
+   *          the username
+   * @return the password
+   */
+  private static String resolveTestPassword(String username) {
+    String value = System.getenv("TEST_ACCOUNT_PASSWORD");
+    if (value == null || value.isEmpty()) {
+      value = System.getProperty("test.account.password");
+    }
+    return (value == null || value.isEmpty()) ? username : value;
+  }
+
+  /**
    * Gets the account by username and password.
    */
   @Test
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    String password = resolveTestPassword(username);
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

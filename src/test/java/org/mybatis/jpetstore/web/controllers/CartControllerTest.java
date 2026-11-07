@@ -17,6 +17,7 @@ package org.mybatis.jpetstore.web.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import javax.servlet.http.HttpServletRequest;
@@ -100,6 +101,8 @@ class CartControllerTest {
     assertThat(cart.containsItemId("EST-1")).isTrue();
     assertThat(cart.getCartItemList().get(0).getQuantity()).isEqualTo(1);
     assertThat(model.asMap().get("cart")).isSameAs(cart);
+    // Session state is externalized (Memorystore for Redis): cart must be written back to the session
+    verify(session).setAttribute("cart", cart);
   }
 
   /**
@@ -121,6 +124,8 @@ class CartControllerTest {
 
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.getCartItemList().get(0).getQuantity()).isEqualTo(2);
+    // Session state is externalized (Memorystore for Redis): cart must be written back to the session
+    verify(session).setAttribute("cart", cart);
     org.mockito.Mockito.verifyNoInteractions(catalogService);
   }
 
@@ -158,6 +163,8 @@ class CartControllerTest {
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.containsItemId("EST-1")).isFalse();
     assertThat(model.asMap().get("cart")).isSameAs(cart);
+    // Session state is externalized (Memorystore for Redis): cart must be written back to the session
+    verify(session).setAttribute("cart", cart);
   }
 
   /**
@@ -199,6 +206,8 @@ class CartControllerTest {
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.containsItemId("EST-1")).isTrue();
     assertThat(cart.getCartItemList().get(0).getQuantity()).isEqualTo(3);
+    // Session state is externalized (Memorystore for Redis): cart must be written back to the session
+    verify(session).setAttribute("cart", cart);
   }
 
   /**
@@ -222,6 +231,8 @@ class CartControllerTest {
 
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.getCartItemList()).isEmpty();
+    // Session state is externalized (Memorystore for Redis): cart must be written back to the session
+    verify(session).setAttribute("cart", cart);
   }
 
   /**
@@ -245,6 +256,8 @@ class CartControllerTest {
 
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.getCartItemList().get(0).getQuantity()).isEqualTo(1);
+    // Session state is externalized (Memorystore for Redis): cart must be written back to the session
+    verify(session).setAttribute("cart", cart);
   }
 
   /**

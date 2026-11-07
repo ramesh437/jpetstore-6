@@ -30,7 +30,7 @@
   <groupId>org.mybatis</groupId>
   <artifactId>jpetstore</artifactId>
   <version>6.4.1-SNAPSHOT</version>
-  <packaging>war</packaging>
+  <packaging>jar</packaging>
 
   <name>JPetStore Demo 6</name>
   <url>https://www.mybatis.org/jpetstore-6/</url>
@@ -74,6 +74,12 @@
     <mockito.version>5.24.0</mockito.version>
     <slf4j.version>2.0.20</slf4j.version>
     <spring.version>5.3.39</spring.version>
+    <tomcat-embed.version>9.0.120</tomcat-embed.version>
+    <spring-boot.version>2.7.18</spring-boot.version>
+    <start-class>org.mybatis.jpetstore.JpetstoreApplication</start-class>
+
+    <!-- Integration tests required a cargo-deployed WAR; skipped for the self-contained executable JAR -->
+    <skipITs>true</skipITs>
 
     <!-- Plugin Versions -->
     <cargo-maven3-plugin.version>1.10.30</cargo-maven3-plugin.version>
@@ -102,6 +108,11 @@
 
   <dependencies>
 
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>33.0.0-jre</version>
+    </dependency>
     <dependency>
       <groupId>org.mybatis</groupId>
       <artifactId>mybatis</artifactId>
@@ -138,6 +149,40 @@
       <groupId>org.springframework</groupId>
       <artifactId>spring-webmvc</artifactId>
       <version>${spring.version}</version>
+    </dependency>
+
+    <!-- Externalized HTTP session state: Spring Session backed by Memorystore for Redis -->
+    <dependency>
+      <groupId>org.springframework.session</groupId>
+      <artifactId>spring-session-data-redis</artifactId>
+      <version>2.7.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.data</groupId>
+      <artifactId>spring-data-redis</artifactId>
+      <version>2.7.18</version>
+    </dependency>
+    <dependency>
+      <groupId>io.lettuce</groupId>
+      <artifactId>lettuce-core</artifactId>
+      <version>6.1.10.RELEASE</version>
+    </dependency>
+
+    <!-- Embedded servlet container (replaces external application server) -->
+    <dependency>
+      <groupId>org.apache.tomcat.embed</groupId>
+      <artifactId>tomcat-embed-core</artifactId>
+      <version>${tomcat-embed.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tomcat.embed</groupId>
+      <artifactId>tomcat-embed-jasper</artifactId>
+      <version>${tomcat-embed.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tomcat.embed</groupId>
+      <artifactId>tomcat-embed-el</artifactId>
+      <version>${tomcat-embed.version}</version>
     </dependency>
 
     <dependency>
@@ -253,12 +298,22 @@
 
   <build>
     <finalName>jpetstore</finalName>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+      <!-- Bundle the web application (JSPs, WEB-INF, static content) inside the executable JAR -->
+      <resource>
+        <directory>src/main/webapp</directory>
+        <targetPath>webapp</targetPath>
+      </resource>
+    </resources>
     <pluginManagement>
       <plugins>
         <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-war-plugin</artifactId>
-          <version>3.5.1</version>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-maven-plugin</artifactId>
+          <version>${spring-boot.version}</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -289,23 +344,24 @@
     </pluginManagement>
 
     <plugins>
+      <!-- Build a self-contained executable JAR with embedded Tomcat -->
       <plugin>
-        <groupId>org.codehaus.cargo</groupId>
-        <artifactId>cargo-maven3-plugin</artifactId>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <mainClass>${start-class}</mainClass>
+          <excludes>
+            <exclude>
+              <groupId>jakarta.servlet</groupId>
+              <artifactId>jakarta.servlet-api</artifactId>
+            </exclude>
+          </excludes>
+        </configuration>
         <executions>
           <execution>
-            <id>start-container</id>
             <goals>
-              <goal>start</goal>
+              <goal>repackage</goal>
             </goals>
-            <phase>pre-integration-test</phase>
-          </execution>
-          <execution>
-            <id>stop-container</id>
-            <goals>
-              <goal>stop</goal>
-            </goals>
-            <phase>post-integration-test</phase>
           </execution>
         </executions>
       </plugin>
@@ -494,13 +550,6 @@
       </properties>
       <build>
         <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-war-plugin</artifactId>
-            <configuration>
-              <packagingExcludes>WEB-INF/beans.xml</packagingExcludes>
-            </configuration>
-          </plugin>
           <plugin>
             <groupId>org.codehaus.cargo</groupId>
             <artifactId>cargo-maven3-plugin</artifactId>

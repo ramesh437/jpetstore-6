@@ -170,6 +170,9 @@ class OrderControllerTest {
     // Verify insertOrder was called exactly once
     verify(orderService, times(1)).insertOrder(any(org.mybatis.jpetstore.domain.Order.class));
 
+    // Cart is reset in the externalized session after order submission
+    verify(session, times(1)).setAttribute(org.mockito.ArgumentMatchers.eq("cart"), any(Cart.class));
+
     // The session order must NOT have been overwritten with null
     assertThat(sessionOrder.getBillAddress1()).isEqualTo("901 San Antonio Road");
     assertThat(sessionOrder.getBillCity()).isEqualTo("Palo Alto");
@@ -226,6 +229,8 @@ class OrderControllerTest {
 
     // Shipping fields must have been updated from the form
     assertThat(sessionOrder.getShipAddress2()).isEqualTo("MS UCUP02-207");
+    // Session state is externalized (Memorystore for Redis): order must be written back to the session
+    verify(session, times(1)).setAttribute("order", sessionOrder);
   }
 
   /**

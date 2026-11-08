@@ -21,12 +21,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Authenticator;
 import java.net.PasswordAuthentication;
+import java.net.URLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * The Class MavenWrapperDownloader.
@@ -36,8 +38,19 @@ public final class MavenWrapperDownloader {
     /** The wrapper version. */
     private static final String WRAPPER_VERSION = "3.3.4";
 
+    /** The connect timeout in milliseconds. */
+    private static final int CONNECT_TIMEOUT_MS =
+            Integer.parseInt(System.getenv().getOrDefault("MVNW_CONNECT_TIMEOUT_MS", "10000"));
+
+    /** The read timeout in milliseconds. */
+    private static final int READ_TIMEOUT_MS =
+            Integer.parseInt(System.getenv().getOrDefault("MVNW_READ_TIMEOUT_MS", "30000"));
+
     /** The verbose. */
     private static final boolean VERBOSE = Boolean.parseBoolean(System.getenv("MVNW_VERBOSE"));
+
+    /** The in-progress temp file, cleaned up by the shutdown hook on SIGTERM/SIGINT. */
+    private static final AtomicReference<Path> TEMP_FILE = new AtomicReference<>();
 
     /**
      * Main.
@@ -45,11 +58,24 @@ public final class MavenWrapperDownloader {
      * @param args the args
      */
     public static void main(String[] args) {
+        // Graceful shutdown: release partial download artifacts when the process is terminated (SIGTERM/SIGINT)
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            final Path temp = TEMP_FILE.getAndSet(null);
+            if (temp != null) {
+                try {
+                    Files.deleteIfExists(temp);
+                } catch (IOException ignored) {
+                    // best effort cleanup during shutdown
+                }
+            }
+        }, "mvnw-downloader-shutdown-hook"));
+
         log("Apache Maven Wrapper Downloader " + WRAPPER_VERSION);
 
         if (args.length != 2) {
             System.err.println(" - ERROR wrapperUrl or wrapperJarPath parameter missing");
-            System.exit(1);
+            Runtime.getRuntime().exit(1);
+            return;
         }
 
         try {
@@ -67,7 +93,7 @@ public final class MavenWrapperDownloader {
             if (VERBOSE) {
                 e.printStackTrace();
             }
-            System.exit(1);
+            Runtime.getRuntime().exit(1);
         }
     }
 
@@ -94,12 +120,17 @@ public final class MavenWrapperDownloader {
         Path temp = wrapperJarPath
                 .getParent()
                 .resolve(wrapperJarPath.getFileName() + "."
-                        + Long.toUnsignedString(ThreadLocalRandom.current().nextLong()) + ".tmp");
-        try (InputStream inStream = wrapperUrl.openStream()) {
+                        + UUID.randomUUID() + ".tmp");
+        TEMP_FILE.set(temp);
+        final URLConnection connection = wrapperUrl.openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
+        try (InputStream inStream = connection.getInputStream()) {
             Files.copy(inStream, temp, StandardCopyOption.REPLACE_EXISTING);
             Files.move(temp, wrapperJarPath, StandardCopyOption.REPLACE_EXISTING);
         } finally {
             Files.deleteIfExists(temp);
+            TEMP_FILE.set(null);
         }
         log(" - Downloader complete");
     }

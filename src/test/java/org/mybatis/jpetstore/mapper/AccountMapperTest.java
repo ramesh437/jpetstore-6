@@ -77,13 +77,33 @@ class AccountMapperTest {
   }
 
   /**
+   * Resolve the test password from the environment (populated from Google Secret Manager) or the seeded test database.
+   *
+   * @param username
+   *          the username
+   * @return the password
+   */
+  private String resolveTestPassword(String username) {
+    String password = System.getenv("TEST_ACCOUNT_PASSWORD");
+    if (password == null || password.isEmpty()) {
+      password = System.getProperty("test.account.password");
+    }
+    if (password == null || password.isEmpty()) {
+      password = jdbcTemplate.queryForObject("SELECT password FROM signon WHERE username = ?", String.class, username);
+    }
+    return password;
+  }
+
+  /**
    * Gets the account by username and password.
    */
   @Test
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is not hard-coded: it is injected at runtime (e.g. from Google Secret Manager via the
+    // TEST_ACCOUNT_PASSWORD environment variable / system property) or, if not provided, read from the seeded test DB.
+    String password = resolveTestPassword(username);
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

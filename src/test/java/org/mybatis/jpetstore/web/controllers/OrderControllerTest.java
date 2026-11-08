@@ -39,6 +39,8 @@ import org.springframework.ui.Model;
 /**
  * The Class OrderControllerTest.
  */
+// NOTE: HttpSession is mocked here only as the servlet API contract. At runtime the session is externalized to
+// Memorystore for Redis via Spring Session (see RedisSessionConfiguration), so no state is held in the JVM.
 @ExtendWith(MockitoExtension.class)
 class OrderControllerTest {
 

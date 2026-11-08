@@ -77,13 +77,33 @@ class AccountMapperTest {
   }
 
   /**
+   * Resolves the test account password from externalized configuration instead of embedding it in source. The value is
+   * read from the {@code JPETSTORE_TEST_ACID_PASSWORD} environment variable (populated from Google Secret Manager, e.g.
+   * via Spring Cloud GCP {@code sm://} references or Secret Manager injected env vars) or from the
+   * {@code jpetstore.test.acid-password} system property. When no external secret is provided, the value is read from
+   * the in-memory HSQLDB test fixture, so no credential literal is kept in source code.
+   *
+   * @return the password
+   */
+  private String resolveTestPassword() {
+    String value = System.getProperty("jpetstore.test.acid-password");
+    if (value == null || value.isEmpty()) {
+      value = System.getenv("JPETSTORE_TEST_ACID_PASSWORD");
+    }
+    if (value == null || value.isEmpty()) {
+      value = jdbcTemplate.queryForObject("SELECT password FROM signon WHERE username = ?", String.class, "ACID");
+    }
+    return value;
+  }
+
+  /**
    * Gets the account by username and password.
    */
   @Test
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    String password = resolveTestPassword();
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

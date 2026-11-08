@@ -25,7 +25,36 @@
          http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd
          http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
 
-    <mvc:annotation-driven />
+    <!-- Resolves ${...} placeholders from environment variables / system properties (12-factor config) -->
+    <context:property-placeholder ignore-resource-not-found="true" ignore-unresolvable="true" />
+
+    <!-- User session state is externalized to Memorystore for Redis (no in-memory HttpSession state) -->
+    <bean id="redisSessionStore" class="org.mybatis.jpetstore.web.session.RedisSessionStore" destroy-method="close">
+        <constructor-arg index="0" value="${REDIS_HOST:localhost}" />
+        <constructor-arg index="1" value="${REDIS_PORT:6379}" />
+        <constructor-arg index="2" value="${REDIS_AUTH:}" />
+        <constructor-arg index="3" value="${REDIS_SSL:false}" />
+        <constructor-arg index="4" value="${SESSION_TTL_SECONDS:1800}" />
+        <constructor-arg index="5" value="${SESSION_KEY_PREFIX:jpetstore:session:}" />
+    </bean>
+
+    <mvc:annotation-driven>
+        <mvc:argument-resolvers>
+            <bean class="org.mybatis.jpetstore.web.session.RedisSessionArgumentResolver" />
+        </mvc:argument-resolvers>
+    </mvc:annotation-driven>
+
+    <mvc:interceptors>
+        <mvc:interceptor>
+            <mvc:mapping path="/**" />
+            <mvc:exclude-mapping path="/css/**" />
+            <mvc:exclude-mapping path="/images/**" />
+            <bean class="org.mybatis.jpetstore.web.session.RedisSessionInterceptor">
+                <constructor-arg index="0" ref="redisSessionStore" />
+                <constructor-arg index="1" value="${SESSION_TTL_SECONDS:1800}" />
+            </bean>
+        </mvc:interceptor>
+    </mvc:interceptors>
     <mvc:default-servlet-handler />
 
     <context:component-scan base-package="org.mybatis.jpetstore.web.controllers" />

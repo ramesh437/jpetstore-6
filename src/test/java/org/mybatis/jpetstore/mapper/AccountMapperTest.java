@@ -83,7 +83,13 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is externalized: it is injected at runtime (e.g. from Google Secret Manager via the
+    // "sm://" property placeholder / environment variable JPETSTORE_TEST_ACID_PASSWORD) instead of being
+    // hard-coded. When no external secret is provided, the seeded value is read from the test database.
+    String password = System.getProperty("jpetstore.test.acid.password", System.getenv("JPETSTORE_TEST_ACID_PASSWORD"));
+    if (password == null || password.isEmpty()) {
+      password = jdbcTemplate.queryForObject("SELECT password FROM signon WHERE username = ?", String.class, username);
+    }
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

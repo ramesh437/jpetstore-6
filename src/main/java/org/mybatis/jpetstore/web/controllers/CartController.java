@@ -18,12 +18,12 @@ package org.mybatis.jpetstore.web.controllers;
 import java.util.Iterator;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.CartItem;
 import org.mybatis.jpetstore.domain.Item;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.mybatis.jpetstore.web.session.RedisSessionState;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -47,14 +47,14 @@ public class CartController {
   private CatalogService catalogService;
 
   /**
-   * Get cart.
+   * Get cart from the Redis-backed session state.
    *
    * @param session
    *          the session
    *
    * @return the cart
    */
-  private Cart getCart(HttpSession session) {
+  private Cart getCart(RedisSessionState session) {
     Cart cart = (Cart) session.getAttribute("cart");
     if (cart == null) {
       cart = new Cart();
@@ -74,7 +74,7 @@ public class CartController {
    * @return the string
    */
   @GetMapping({ "", "/" })
-  public String viewCart(HttpSession session, Model model) {
+  public String viewCart(RedisSessionState session, Model model) {
     model.addAttribute("cart", getCart(session));
     return "cart/Cart";
   }
@@ -93,7 +93,7 @@ public class CartController {
    */
   @GetMapping("/addItem")
   public String addItemToCart(@RequestParam(value = "workingItemId", required = false) String workingItemId,
-      HttpSession session, Model model) {
+      RedisSessionState session, Model model) {
     if (workingItemId == null || workingItemId.trim().isEmpty()) {
       model.addAttribute("message", "Invalid item ID: cannot add item to cart.");
       return ERROR_VIEW;
@@ -106,6 +106,8 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    // state lives in Redis: write the mutated cart back
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -124,13 +126,14 @@ public class CartController {
    */
   @GetMapping("/removeItem")
   public String removeItemFromCart(@RequestParam(value = "workingItemId", required = false) String workingItemId,
-      HttpSession session, Model model) {
+      RedisSessionState session, Model model) {
     if (workingItemId == null || workingItemId.trim().isEmpty()) {
       model.addAttribute("message", "Invalid item ID: cannot remove item from cart.");
       return ERROR_VIEW;
     }
     Cart cart = getCart(session);
     Item item = cart.removeItemById(workingItemId);
+    session.setAttribute("cart", cart);
     if (item == null) {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
@@ -152,7 +155,7 @@ public class CartController {
    * @return the string
    */
   @PostMapping("/update")
-  public String updateCartQuantities(HttpServletRequest request, HttpSession session, Model model) {
+  public String updateCartQuantities(HttpServletRequest request, RedisSessionState session, Model model) {
     Cart cart = getCart(session);
     Iterator<CartItem> cartItems = cart.getAllCartItems();
     while (cartItems.hasNext()) {
@@ -168,6 +171,7 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -183,7 +187,7 @@ public class CartController {
    * @return the string
    */
   @GetMapping("/checkout")
-  public String checkOut(HttpSession session, Model model) {
+  public String checkOut(RedisSessionState session, Model model) {
     model.addAttribute("cart", getCart(session));
     return "cart/Checkout";
   }

@@ -20,7 +20,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Item;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.mybatis.jpetstore.web.session.RedisSessionState;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 
@@ -52,7 +52,7 @@ class CartControllerTest {
    */
   @Test
   void viewCartReturnsCartView() {
-    HttpSession session = mock(HttpSession.class);
+    RedisSessionState session = mock(RedisSessionState.class);
     Cart cart = new Cart();
     when(session.getAttribute("cart")).thenReturn(cart);
     Model model = new ExtendedModelMap();
@@ -68,7 +68,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNullIdReturnsError() {
-    HttpSession session = mock(HttpSession.class);
+    RedisSessionState session = mock(RedisSessionState.class);
     Model model = new ExtendedModelMap();
 
     String view = cartController.addItemToCart(null, session, model);
@@ -82,7 +82,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNewIdFetchesItemFromCatalogAndAddsToCart() {
-    HttpSession session = mock(HttpSession.class);
+    RedisSessionState session = mock(RedisSessionState.class);
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
@@ -107,7 +107,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithExistingIdIncrementsQuantityWithoutCallingCatalog() {
-    HttpSession session = mock(HttpSession.class);
+    RedisSessionState session = mock(RedisSessionState.class);
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
@@ -129,7 +129,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNullIdReturnsError() {
-    HttpSession session = mock(HttpSession.class);
+    RedisSessionState session = mock(RedisSessionState.class);
     Model model = new ExtendedModelMap();
 
     String view = cartController.removeItemFromCart(null, session, model);
@@ -143,7 +143,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithExistingIdRemovesItemFromCart() {
-    HttpSession session = mock(HttpSession.class);
+    RedisSessionState session = mock(RedisSessionState.class);
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
@@ -165,7 +165,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNonExistentIdReturnsError() {
-    HttpSession session = mock(HttpSession.class);
+    RedisSessionState session = mock(RedisSessionState.class);
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
@@ -182,7 +182,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesUpdatesQuantity() {
-    HttpSession session = mock(HttpSession.class);
+    RedisSessionState session = mock(RedisSessionState.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -206,7 +206,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesRemovesItemWhenQuantityLessThanOne() {
-    HttpSession session = mock(HttpSession.class);
+    RedisSessionState session = mock(RedisSessionState.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -229,7 +229,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesIgnoresInvalidNumericInput() {
-    HttpSession session = mock(HttpSession.class);
+    RedisSessionState session = mock(RedisSessionState.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -252,7 +252,7 @@ class CartControllerTest {
    */
   @Test
   void checkOutReturnsCheckoutViewWithCartFromSession() {
-    HttpSession session = mock(HttpSession.class);
+    RedisSessionState session = mock(RedisSessionState.class);
     Cart cart = new Cart();
     when(session.getAttribute("cart")).thenReturn(cart);
     Model model = new ExtendedModelMap();
@@ -268,7 +268,7 @@ class CartControllerTest {
    */
   @Test
   void checkOutWithNoExistingCartCreatesNewCartInSession() {
-    HttpSession session = mock(HttpSession.class);
+    RedisSessionState session = mock(RedisSessionState.class);
     when(session.getAttribute("cart")).thenReturn(null);
     Model model = new ExtendedModelMap();
 

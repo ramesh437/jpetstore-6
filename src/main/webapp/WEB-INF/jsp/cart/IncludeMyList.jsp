@@ -15,11 +15,11 @@
        limitations under the License.
 
 --%>
-<c:if test="${not empty sessionScope.accountBean.myList}">
+<c:if test="${not empty accountBean.myList}">
     <p>Pet Favorites <br />
     Shop for more of your favorite pets here.</p>
     <ul>
-        <c:forEach var="product" items="${sessionScope.accountBean.myList}">
+        <c:forEach var="product" items="${accountBean.myList}">
             <li><a href="${pageContext.request.contextPath}/catalog/viewProduct?productId=${product.productId}">${product.name}</a> (${product.productId})</li>
         </c:forEach>
     </ul>

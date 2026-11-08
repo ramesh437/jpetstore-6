@@ -15,15 +15,16 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.ImmutableList;
 
-import javax.servlet.http.HttpSession;
+import java.util.List;
 
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Order;
 import org.mybatis.jpetstore.service.OrderService;
+import org.mybatis.jpetstore.web.session.UserSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -53,9 +54,20 @@ public class OrderController {
   /** The error view. */
   private static final String ERROR_VIEW = "common/Error";
 
-  /** The card type list. */
-  private static final List<String> CARD_TYPE_LIST = Collections
-      .unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
+  /** Bounded reference-data cache (max 10 entries) to prevent unbounded memory growth. */
+  private static final Cache<String, List<String>> REFERENCE_DATA_CACHE = CacheBuilder.newBuilder().maximumSize(10)
+      .build();
+  /** The card type list cache key. */
+  private static final String CARD_TYPE_KEY = "cardTypes";
+
+  private static List<String> cardTypeList() {
+    List<String> cached = REFERENCE_DATA_CACHE.getIfPresent(CARD_TYPE_KEY);
+    if (cached == null) {
+      cached = ImmutableList.of("Visa", "MasterCard", "American Express");
+      REFERENCE_DATA_CACHE.put(CARD_TYPE_KEY, cached);
+    }
+    return cached;
+  }
 
   /** The order service. */
   @Autowired
@@ -72,7 +84,7 @@ public class OrderController {
    * @return the string
    */
   @GetMapping("/list")
-  public String listOrders(HttpSession session, Model model) {
+  public String listOrders(UserSession session, Model model) {
     AccountController.AccountSession accountSession = (AccountController.AccountSession) session
         .getAttribute("accountBean");
     if (accountSession == null || !accountSession.isAuthenticated()) {
@@ -96,7 +108,7 @@ public class OrderController {
    * @return the string
    */
   @GetMapping("/new")
-  public String newOrderForm(HttpSession session, Model model) {
+  public String newOrderForm(UserSession session, Model model) {
     AccountController.AccountSession accountSession = (AccountController.AccountSession) session
         .getAttribute("accountBean");
     Cart cart = (Cart) session.getAttribute("cart");
@@ -111,7 +123,7 @@ public class OrderController {
       order.initOrder(accountSession.getAccount(), cart);
       session.setAttribute("order", order);
       model.addAttribute("order", order);
-      model.addAttribute("creditCardTypes", CARD_TYPE_LIST);
+      model.addAttribute("creditCardTypes", cardTypeList());
       return NEW_ORDER_VIEW;
     }
     model.addAttribute("message", "An order could not be created because a cart could not be found.");
@@ -137,7 +149,7 @@ public class OrderController {
   @PostMapping("/new")
   public String newOrder(@ModelAttribute Order order,
       @RequestParam(value = "shippingAddressRequired", defaultValue = "false") boolean shippingAddressRequired,
-      @RequestParam(value = "confirmed", defaultValue = "false") boolean confirmed, HttpSession session, Model model) {
+      @RequestParam(value = "confirmed", defaultValue = "false") boolean confirmed, UserSession session, Model model) {
 
     Order sessionOrder = (Order) session.getAttribute("order");
 
@@ -219,7 +231,7 @@ public class OrderController {
    * @return the string
    */
   @GetMapping("/view")
-  public String viewOrder(@RequestParam("orderId") int orderId, HttpSession session, Model model) {
+  public String viewOrder(@RequestParam("orderId") int orderId, UserSession session, Model model) {
     AccountController.AccountSession accountSession = (AccountController.AccountSession) session
         .getAttribute("accountBean");
     if (accountSession == null || !accountSession.isAuthenticated()) {

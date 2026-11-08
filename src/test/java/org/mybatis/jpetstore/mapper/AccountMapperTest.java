@@ -19,6 +19,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 
+import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
+import com.google.cloud.spring.core.DefaultGcpProjectIdProvider;
+import com.google.cloud.spring.secretmanager.SecretManagerTemplate;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mybatis.jpetstore.domain.Account;
@@ -43,6 +47,30 @@ class AccountMapperTest {
   /** The jdbc template. */
   @Autowired
   private JdbcTemplate jdbcTemplate;
+
+  /**
+   * Resolves the test account password without hard-coding it. The value is read from the
+   * {@code JPETSTORE_TEST_ACCOUNT_PASSWORD} environment variable (e.g. injected from Google Secret Manager) or, when
+   * running with GCP credentials, directly from Google Secret Manager via Spring Cloud GCP
+   * ({@code JPETSTORE_TEST_ACCOUNT_PASSWORD_SECRET} names the secret, default {@code jpetstore-test-account-password}).
+   *
+   * @return the password
+   */
+  private static String resolveTestAccountPassword() {
+    String value = System.getenv("JPETSTORE_TEST_ACCOUNT_PASSWORD");
+    if (value != null && !value.isEmpty()) {
+      return value;
+    }
+    String secretId = System.getenv().getOrDefault("JPETSTORE_TEST_ACCOUNT_PASSWORD_SECRET",
+        "jpetstore-test-account-password");
+    try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
+      SecretManagerTemplate template = new SecretManagerTemplate(client, new DefaultGcpProjectIdProvider());
+      return template.getSecretString(secretId);
+    } catch (Exception e) {
+      throw new IllegalStateException("Test account password is not configured. Set JPETSTORE_TEST_ACCOUNT_PASSWORD "
+          + "or provide secret '" + secretId + "' in Google Secret Manager.", e);
+    }
+  }
 
   /**
    * Gets the account by username.
@@ -83,7 +111,7 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    String password = resolveTestAccountPassword();
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

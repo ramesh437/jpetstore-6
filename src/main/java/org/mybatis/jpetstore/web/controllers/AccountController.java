@@ -15,16 +15,17 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.ImmutableList;
 
-import javax.servlet.http.HttpSession;
+import java.util.List;
 
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
 import org.mybatis.jpetstore.service.AccountService;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.mybatis.jpetstore.web.session.UserSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -48,11 +49,30 @@ public class AccountController {
   /** The edit account view. */
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
-  /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
-  /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  /** Bounded reference-data cache (max 10 entries) to prevent unbounded memory growth. */
+  private static final Cache<String, List<String>> REFERENCE_DATA_CACHE = CacheBuilder.newBuilder().maximumSize(10)
+      .build();
+  /** The language list cache key. */
+  private static final String LANGUAGE_KEY = "languages";
+  /** The category list cache key. */
+  private static final String CATEGORY_KEY = "categories";
+
+  private static List<String> languageList() {
+    return loadReferenceData(LANGUAGE_KEY, ImmutableList.of("english", "japanese"));
+  }
+
+  private static List<String> categoryList() {
+    return loadReferenceData(CATEGORY_KEY, ImmutableList.of("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  }
+
+  private static List<String> loadReferenceData(String key, List<String> defaults) {
+    List<String> cached = REFERENCE_DATA_CACHE.getIfPresent(key);
+    if (cached == null) {
+      REFERENCE_DATA_CACHE.put(key, defaults);
+      cached = defaults;
+    }
+    return cached;
+  }
 
   /** The account service. */
   @Autowired
@@ -87,7 +107,7 @@ public class AccountController {
    */
   @PostMapping("/signon")
   public String signon(@RequestParam("username") String username, @RequestParam("password") String password,
-      HttpSession session, Model model) {
+      UserSession session, Model model) {
     Account account = accountService.getAccount(username, password);
     if (account == null) {
       model.addAttribute("message", "Invalid username or password.  Signon failed.");
@@ -108,7 +128,7 @@ public class AccountController {
    * @return the string
    */
   @GetMapping("/signoff")
-  public String signoff(HttpSession session) {
+  public String signoff(UserSession session) {
     session.invalidate();
     return "redirect:/catalog";
   }
@@ -123,8 +143,8 @@ public class AccountController {
    */
   @GetMapping("/new")
   public String newAccountForm(Model model) {
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", languageList());
+    model.addAttribute("categories", categoryList());
     model.addAttribute("account", new Account());
     return NEW_ACCOUNT_VIEW;
   }
@@ -154,13 +174,13 @@ public class AccountController {
    * @return the string
    */
   @GetMapping("/edit")
-  public String editAccountForm(HttpSession session, Model model) {
+  public String editAccountForm(UserSession session, Model model) {
     AccountSession accountSession = (AccountSession) session.getAttribute("accountBean");
     if (accountSession != null) {
       model.addAttribute("account", accountSession.getAccount());
     }
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", languageList());
+    model.addAttribute("categories", categoryList());
     return EDIT_ACCOUNT_VIEW;
   }
 
@@ -175,7 +195,7 @@ public class AccountController {
    * @return the string
    */
   @PostMapping("/edit")
-  public String editAccount(@ModelAttribute Account account, HttpSession session) {
+  public String editAccount(@ModelAttribute Account account, UserSession session) {
     accountService.updateAccount(account);
     Account updatedAccount = accountService.getAccount(account.getUsername());
     List<Product> myList = catalogService.getProductListByCategory(updatedAccount.getFavouriteCategoryId());
@@ -184,7 +204,8 @@ public class AccountController {
   }
 
   /**
-   * Inner class to hold account session data, compatible with JSP ${sessionScope.accountBean.*} references.
+   * Inner class to hold account session data. It is stored in the external session store (Memorystore for Redis) and
+   * exposed to JSPs as ${accountBean.*}.
    */
   public static class AccountSession implements java.io.Serializable {
     /** The serial version uid. */

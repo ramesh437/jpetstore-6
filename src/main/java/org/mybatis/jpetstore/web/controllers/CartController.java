@@ -106,6 +106,8 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    // Re-store the cart so the change is persisted to the external (Memorystore for Redis) session store
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -135,6 +137,8 @@ public class CartController {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
     }
+    // Re-store the cart so the change is persisted to the external (Memorystore for Redis) session store
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -168,6 +172,8 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    // Re-store the cart so the change is persisted to the external (Memorystore for Redis) session store
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }

@@ -54,6 +54,7 @@ Running JPetStore sample under Tomcat (using the [cargo-maven2-plugin](https://c
   > | tomee8              | Running under the TomEE 8.0         |
   > | wildfly26           | Running under the WildFly 26        |
 
+- The application is packaged as a self-contained executable JAR with embedded Tomcat: `./mvnw clean package && java -jar target/jpetstore.jar` (`PORT` and `CONTEXT_PATH` env vars configure the port, default 8080, and context path, default `/jpetstore`).
 - Run application in browser http://localhost:8080/jpetstore/
 - Press Ctrl-C to stop the server.
 
@@ -75,5 +76,5 @@ docker compose up -d
 Perform integration tests for screen transition.
 
 ```
-$ ./mvnw clean verify -P tomcat9
+$ ./mvnw clean verify
 ```

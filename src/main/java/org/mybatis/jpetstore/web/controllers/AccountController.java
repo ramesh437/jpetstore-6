@@ -18,6 +18,10 @@ package org.mybatis.jpetstore.web.controllers;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 import javax.servlet.http.HttpSession;
 
@@ -36,6 +40,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * The Class AccountController.
+ *
+ * <p>
+ * Session state is externalised to Memorystore for Redis via Spring Session (see RedisSessionConfiguration).
  */
 @Controller
 @RequestMapping("/account")
@@ -48,11 +55,38 @@ public class AccountController {
   /** The edit account view. */
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
+  /** Key for the language list. */
+  private static final String LANGUAGES_KEY = "languages";
+  /** Key for the category list. */
+  private static final String CATEGORIES_KEY = "categories";
+
+  /** Bounded cache (size limit + expiry) holding the reference lists. */
+  private static final Cache<String, List<String>> REFERENCE_LISTS = CacheBuilder.newBuilder().maximumSize(10)
+      .expireAfterAccess(1, TimeUnit.HOURS).build();
+
   /** The language list. */
   private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
   /** The category list. */
   private static final List<String> CATEGORY_LIST = Collections
       .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+
+  private static List<String> languages() {
+    List<String> v = REFERENCE_LISTS.getIfPresent(LANGUAGES_KEY);
+    if (v == null) {
+      v = LANGUAGE_LIST;
+      REFERENCE_LISTS.put(LANGUAGES_KEY, v);
+    }
+    return v;
+  }
+
+  private static List<String> categories() {
+    List<String> v = REFERENCE_LISTS.getIfPresent(CATEGORIES_KEY);
+    if (v == null) {
+      v = CATEGORY_LIST;
+      REFERENCE_LISTS.put(CATEGORIES_KEY, v);
+    }
+    return v;
+  }
 
   /** The account service. */
   @Autowired
@@ -123,8 +157,8 @@ public class AccountController {
    */
   @GetMapping("/new")
   public String newAccountForm(Model model) {
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", languages());
+    model.addAttribute("categories", categories());
     model.addAttribute("account", new Account());
     return NEW_ACCOUNT_VIEW;
   }
@@ -159,8 +193,8 @@ public class AccountController {
     if (accountSession != null) {
       model.addAttribute("account", accountSession.getAccount());
     }
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", languages());
+    model.addAttribute("categories", categories());
     return EDIT_ACCOUNT_VIEW;
   }
 

@@ -20,13 +20,14 @@
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Authenticator;
+import java.net.URLConnection;
 import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 
 /**
  * The Class MavenWrapperDownloader.
@@ -36,8 +37,19 @@ public final class MavenWrapperDownloader {
     /** The wrapper version. */
     private static final String WRAPPER_VERSION = "3.3.4";
 
+    /** The connect timeout in milliseconds. */
+    private static final int CONNECT_TIMEOUT_MS =
+            Integer.parseInt(System.getenv().getOrDefault("MVNW_CONNECT_TIMEOUT", "10000"));
+
+    /** The read timeout in milliseconds. */
+    private static final int READ_TIMEOUT_MS =
+            Integer.parseInt(System.getenv().getOrDefault("MVNW_READ_TIMEOUT", "30000"));
+
     /** The verbose. */
     private static final boolean VERBOSE = Boolean.parseBoolean(System.getenv("MVNW_VERBOSE"));
+
+    /** The in-progress temporary download file, cleaned up by the shutdown hook on SIGTERM/SIGINT. */
+    private static volatile Path currentTempFile;
 
     /**
      * Main.
@@ -45,10 +57,23 @@ public final class MavenWrapperDownloader {
      * @param args the args
      */
     public static void main(String[] args) {
+        // Graceful shutdown: release resources (partial temp file) on SIGTERM/SIGINT
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            Path temp = currentTempFile;
+            if (temp != null) {
+                try {
+                    Files.deleteIfExists(temp);
+                } catch (IOException ignored) {
+                    // best effort cleanup during shutdown
+                }
+            }
+        }, "mvnw-downloader-shutdown-hook"));
+
         log("Apache Maven Wrapper Downloader " + WRAPPER_VERSION);
 
         if (args.length != 2) {
             System.err.println(" - ERROR wrapperUrl or wrapperJarPath parameter missing");
+            // Exit status propagated; registered shutdown hook performs cleanup
             System.exit(1);
         }
 
@@ -67,6 +92,7 @@ public final class MavenWrapperDownloader {
             if (VERBOSE) {
                 e.printStackTrace();
             }
+            // Exit status propagated; registered shutdown hook performs cleanup
             System.exit(1);
         }
     }
@@ -94,14 +120,30 @@ public final class MavenWrapperDownloader {
         Path temp = wrapperJarPath
                 .getParent()
                 .resolve(wrapperJarPath.getFileName() + "."
-                        + Long.toUnsignedString(ThreadLocalRandom.current().nextLong()) + ".tmp");
-        try (InputStream inStream = wrapperUrl.openStream()) {
+                        + UUID.randomUUID() + ".tmp");
+        currentTempFile = temp;
+        try (InputStream inStream = openConnectionWithTimeouts(wrapperUrl)) {
             Files.copy(inStream, temp, StandardCopyOption.REPLACE_EXISTING);
             Files.move(temp, wrapperJarPath, StandardCopyOption.REPLACE_EXISTING);
         } finally {
             Files.deleteIfExists(temp);
+            currentTempFile = null;
         }
         log(" - Downloader complete");
+    }
+
+    /**
+     * Open a stream with explicit connect and read timeouts.
+     *
+     * @param url the url
+     * @return the input stream
+     * @throws IOException the io exception
+     */
+    private static InputStream openConnectionWithTimeouts(URL url) throws IOException {
+        URLConnection connection = url.openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
+        return connection.getInputStream();
     }
 
     /**

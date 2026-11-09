@@ -30,7 +30,7 @@
   <groupId>org.mybatis</groupId>
   <artifactId>jpetstore</artifactId>
   <version>6.4.1-SNAPSHOT</version>
-  <packaging>war</packaging>
+  <packaging>jar</packaging>
 
   <name>JPetStore Demo 6</name>
   <url>https://www.mybatis.org/jpetstore-6/</url>
@@ -74,9 +74,17 @@
     <mockito.version>5.24.0</mockito.version>
     <slf4j.version>2.0.20</slf4j.version>
     <spring.version>5.3.39</spring.version>
+    <spring-session.version>2.7.4</spring-session.version>
+    <lettuce.version>6.1.10.RELEASE</lettuce.version>
+
+    <tomcat.version>9.0.120</tomcat.version>
 
     <!-- Plugin Versions -->
-    <cargo-maven3-plugin.version>1.10.30</cargo-maven3-plugin.version>
+    <maven-shade-plugin.version>3.6.0</maven-shade-plugin.version>
+    <process-exec-maven-plugin.version>0.9</process-exec-maven-plugin.version>
+
+    <!-- Executable JAR entry point (embedded Tomcat) -->
+    <start-class>org.mybatis.jpetstore.JpetstoreApplication</start-class>
 
     <!-- Automatic Module Name -->
     <module.name>org.mybatis.jpetstore</module.name>
@@ -102,6 +110,11 @@
 
   <dependencies>
 
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>33.0.0-jre</version>
+    </dependency>
     <dependency>
       <groupId>org.mybatis</groupId>
       <artifactId>mybatis</artifactId>
@@ -140,6 +153,24 @@
       <version>${spring.version}</version>
     </dependency>
 
+    <!-- Externalised HTTP session state: Spring Session backed by GCP Memorystore for Redis -->
+    <dependency>
+      <groupId>org.springframework.session</groupId>
+      <artifactId>spring-session-data-redis</artifactId>
+      <version>${spring-session.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-jcl</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.lettuce</groupId>
+      <artifactId>lettuce-core</artifactId>
+      <version>${lettuce.version}</version>
+    </dependency>
+
     <dependency>
       <groupId>org.apache.taglibs</groupId>
       <artifactId>taglibs-standard-spec</artifactId>
@@ -149,6 +180,18 @@
       <groupId>org.apache.taglibs</groupId>
       <artifactId>taglibs-standard-impl</artifactId>
       <version>1.2.5</version>
+    </dependency>
+
+    <!-- Embedded servlet container + JSP engine (replaces external application server) -->
+    <dependency>
+      <groupId>org.apache.tomcat.embed</groupId>
+      <artifactId>tomcat-embed-core</artifactId>
+      <version>${tomcat.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tomcat.embed</groupId>
+      <artifactId>tomcat-embed-jasper</artifactId>
+      <version>${tomcat.version}</version>
     </dependency>
 
     <dependency>
@@ -253,13 +296,20 @@
 
   <build>
     <finalName>jpetstore</finalName>
+
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+      <!-- Package web resources (JSPs, WEB-INF, static content) inside the executable JAR -->
+      <resource>
+        <directory>src/main/webapp</directory>
+        <targetPath>webapp</targetPath>
+      </resource>
+    </resources>
+
     <pluginManagement>
       <plugins>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-war-plugin</artifactId>
-          <version>3.5.1</version>
-        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-failsafe-plugin</artifactId>
@@ -272,40 +322,91 @@
             <locales>default,es,ja,ko</locales>
           </configuration>
         </plugin>
-        <plugin>
-          <groupId>org.codehaus.cargo</groupId>
-          <artifactId>cargo-maven3-plugin</artifactId>
-          <version>${cargo-maven3-plugin.version}</version>
-          <configuration>
-            <daemon>
-              <properties>
-                <cargo.daemon.url>http://localhost:18000</cargo.daemon.url>
-                <cargo.daemon.handleid>${project.artifactId}</cargo.daemon.handleid>
-              </properties>
-            </daemon>
-          </configuration>
-        </plugin>
       </plugins>
     </pluginManagement>
 
     <plugins>
+      <!-- Build a self-contained executable JAR with embedded Tomcat -->
       <plugin>
-        <groupId>org.codehaus.cargo</groupId>
-        <artifactId>cargo-maven3-plugin</artifactId>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>${maven-shade-plugin.version}</version>
         <executions>
           <execution>
-            <id>start-container</id>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                    <exclude>META-INF/MANIFEST.MF</exclude>
+                    <exclude>module-info.class</exclude>
+                    <exclude>META-INF/versions/*/module-info.class</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/spring.handlers</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/spring.schemas</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/spring.factories</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>${start-class}</mainClass>
+                  <manifestEntries>
+                    <Multi-Release>true</Multi-Release>
+                  </manifestEntries>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Start/stop the executable JAR around the integration tests -->
+      <plugin>
+        <groupId>com.bazaarvoice.maven.plugins</groupId>
+        <artifactId>process-exec-maven-plugin</artifactId>
+        <version>${process-exec-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>start-app</id>
+            <phase>pre-integration-test</phase>
             <goals>
               <goal>start</goal>
             </goals>
-            <phase>pre-integration-test</phase>
+            <configuration>
+              <name>jpetstore</name>
+              <waitForInterrupt>false</waitForInterrupt>
+              <waitAfterLaunch>20</waitAfterLaunch>
+              <arguments>
+                <argument>java</argument>
+                <argument>-jar</argument>
+                <argument>${project.build.directory}/${project.build.finalName}.jar</argument>
+              </arguments>
+              <environment>
+                <PORT>8080</PORT>
+              </environment>
+            </configuration>
           </execution>
           <execution>
-            <id>stop-container</id>
-            <goals>
-              <goal>stop</goal>
-            </goals>
+            <id>stop-app</id>
             <phase>post-integration-test</phase>
+            <goals>
+              <goal>stop-all</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
@@ -323,257 +424,5 @@
       </plugin>
     </plugins>
   </build>
-
-  <profiles>
-
-    <!-- Profiles for Application Server (tomcat first as preferred then alpha order) -->
-    <profile>
-      <id>tomcat9</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <properties>
-        <tomcat.major-version>9</tomcat.major-version>
-        <tomcat.version>9.0.120</tomcat.version>
-        <cargo.maven.containerId>tomcat${tomcat.major-version}x</cargo.maven.containerId>
-        <cargo.maven.containerUrl>https://repo1.maven.org/maven2/org/apache/tomcat/tomcat/${tomcat.version}/tomcat-${tomcat.version}.zip</cargo.maven.containerUrl>
-        <cargo.jvmargs>--add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED</cargo.jvmargs>
-      </properties>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.codehaus.cargo</groupId>
-            <artifactId>cargo-maven3-plugin</artifactId>
-            <configuration>
-              <container>
-                <containerId>${cargo.maven.containerId}</containerId>
-                <type>installed</type>
-                <zipUrlInstaller>
-                  <url>${cargo.maven.containerUrl}</url>
-                </zipUrlInstaller>
-              </container>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
-    <profile>
-      <!-- Use 'payara5' as this is not supported with java 17 due to hk2 'dcs' is null error. -->
-      <id>glassfish5</id>
-      <properties>
-        <glassfish.major-version>5</glassfish.major-version>
-        <glassfish.version>5.1.0</glassfish.version>
-        <cargo.java.home>D:/jdk/jdk-1.8.0.501</cargo.java.home>
-        <cargo.maven.containerId>glassfish${glassfish.major-version}x</cargo.maven.containerId>
-        <cargo.maven.containerUrl>https://repo.maven.apache.org/maven2/org/glassfish/main/distributions/glassfish/${glassfish.version}/glassfish-${glassfish.version}.zip</cargo.maven.containerUrl>
-      </properties>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.codehaus.cargo</groupId>
-            <artifactId>cargo-maven3-plugin</artifactId>
-            <configuration>
-              <container>
-                <containerId>${cargo.maven.containerId}</containerId>
-                <type>installed</type>
-                <zipUrlInstaller>
-                  <url>${cargo.maven.containerUrl}</url>
-                </zipUrlInstaller>
-              </container>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
-    <profile>
-      <id>jetty12-ee8</id>
-      <properties>
-        <jetty.major-version>12</jetty.major-version>
-        <jetty.version>12.1.12</jetty.version>
-        <cargo.maven.containerId>jetty${jetty.major-version}x</cargo.maven.containerId>
-        <cargo.jetty.deployer.ee.version>ee8</cargo.jetty.deployer.ee.version>
-      </properties>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.codehaus.cargo</groupId>
-            <artifactId>cargo-maven3-plugin</artifactId>
-            <configuration>
-              <container>
-                <containerId>jetty12x</containerId>
-                <type>installed</type>
-                <artifactInstaller>
-                  <groupId>org.eclipse.jetty</groupId>
-                  <artifactId>jetty-home</artifactId>
-                  <version>${jetty.version}</version>
-                </artifactInstaller>
-              </container>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
-    <profile>
-      <id>liberty26-ee8</id>
-      <properties>
-        <liberty.version>26.0.0.8</liberty.version>
-        <cargo.maven.containerId>liberty</cargo.maven.containerId>
-        <cargo.maven.containerUrl>https://repo1.maven.org/maven2/com/ibm/websphere/appserver/runtime/wlp-javaee8/${liberty.version}/wlp-javaee8-${liberty.version}.zip</cargo.maven.containerUrl>
-      </properties>
-      <dependencies>
-        <!-- Due to osgi issue with mybatis spring, its required here for liberty -->
-        <dependency>
-          <groupId>org.springframework.batch</groupId>
-          <artifactId>spring-batch-infrastructure</artifactId>
-          <version>4.3.10</version>
-        </dependency>
-      </dependencies>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.codehaus.cargo</groupId>
-            <artifactId>cargo-maven3-plugin</artifactId>
-            <configuration>
-              <container>
-                <containerId>${cargo.maven.containerId}</containerId>
-                <type>installed</type>
-                <zipUrlInstaller>
-                  <url>${cargo.maven.containerUrl}</url>
-                </zipUrlInstaller>
-                <systemProperties>
-                  <ws.jar.cache.disable>true</ws.jar.cache.disable>
-                </systemProperties>
-              </container>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
-    <profile>
-      <id>payara5</id>
-      <properties>
-        <payara.major-version>5</payara.major-version>
-        <payara.version>5.2022.5</payara.version>
-        <cargo.maven.containerId>payara</cargo.maven.containerId>
-        <cargo.maven.containerUrl>https://repo.maven.apache.org/maven2/fish/payara/distributions/payara/${payara.version}/payara-${payara.version}.zip</cargo.maven.containerUrl>
-        <cargo.startup.timeout>300000</cargo.startup.timeout>
-      </properties>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.codehaus.cargo</groupId>
-            <artifactId>cargo-maven3-plugin</artifactId>
-            <configuration>
-              <container>
-                <containerId>${cargo.maven.containerId}</containerId>
-                <type>installed</type>
-                <zipUrlInstaller>
-                  <url>${cargo.maven.containerUrl}</url>
-                </zipUrlInstaller>
-                <timeout>${cargo.startup.timeout}</timeout>
-              </container>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
-    <profile>
-      <!-- TODO: Remove after we switch to jakarta as end of life and no longer supported. -->
-      <id>resin4</id>
-      <properties>
-        <resin.major-version>4</resin.major-version>
-        <resin.version>4.0.67</resin.version>
-        <cargo.maven.containerId>resin${resin.major-version}x</cargo.maven.containerId>
-        <!-- Do not use https as the certificate is bad which prevents this from working! -->
-        <cargo.maven.containerUrl>http://caucho.com/download/resin-${resin.version}.zip</cargo.maven.containerUrl>
-      </properties>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-war-plugin</artifactId>
-            <configuration>
-              <packagingExcludes>WEB-INF/beans.xml</packagingExcludes>
-            </configuration>
-          </plugin>
-          <plugin>
-            <groupId>org.codehaus.cargo</groupId>
-            <artifactId>cargo-maven3-plugin</artifactId>
-            <configuration>
-              <container>
-                <containerId>${cargo.maven.containerId}</containerId>
-                <type>installed</type>
-                <zipUrlInstaller>
-                  <url>${cargo.maven.containerUrl}</url>
-                </zipUrlInstaller>
-              </container>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
-    <profile>
-      <id>tomee8</id>
-      <properties>
-        <tomee.major-version>8</tomee.major-version>
-        <tomee.version>8.0.16</tomee.version>
-        <cargo.maven.containerId>tomee${tomee.major-version}x</cargo.maven.containerId>
-        <cargo.maven.containerUrl>https://repo1.maven.org/maven2/org/apache/tomee/apache-tomee/${tomee.version}/apache-tomee-${tomee.version}-plume.zip</cargo.maven.containerUrl>
-        <cargo.jvmargs>--add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED</cargo.jvmargs>
-      </properties>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.codehaus.cargo</groupId>
-            <artifactId>cargo-maven3-plugin</artifactId>
-            <configuration>
-              <container>
-                <containerId>${cargo.maven.containerId}</containerId>
-                <type>installed</type>
-                <zipUrlInstaller>
-                  <url>${cargo.maven.containerUrl}</url>
-                </zipUrlInstaller>
-              </container>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
-    <profile>
-      <id>wildfly26</id>
-      <properties>
-        <wildfly.major-version>26</wildfly.major-version>
-        <wildfly.version>26.1.3.Final</wildfly.version>
-        <cargo.maven.containerId>wildfly${wildfly.major-version}x</cargo.maven.containerId>
-        <cargo.maven.containerUrl>https://github.com/wildfly/wildfly/releases/download/${wildfly.version}/wildfly-${wildfly.version}.zip</cargo.maven.containerUrl>
-        <cargo.jvmargs>--add-opens=java.base/java.util=ALL-UNNAMED</cargo.jvmargs>
-      </properties>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.codehaus.cargo</groupId>
-            <artifactId>cargo-maven3-plugin</artifactId>
-            <configuration>
-              <container>
-                <containerId>${cargo.maven.containerId}</containerId>
-                <type>installed</type>
-                <zipUrlInstaller>
-                  <url>${cargo.maven.containerUrl}</url>
-                </zipUrlInstaller>
-              </container>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
-  </profiles>
 
 </project>

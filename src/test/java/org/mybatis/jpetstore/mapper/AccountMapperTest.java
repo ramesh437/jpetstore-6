@@ -44,6 +44,14 @@ class AccountMapperTest {
   @Autowired
   private JdbcTemplate jdbcTemplate;
 
+  private static String resolveSecret(String envName, String propertyName, String seedDefault) {
+    String value = System.getenv(envName);
+    if (value == null || value.isEmpty()) {
+      value = System.getProperty(propertyName);
+    }
+    return value == null || value.isEmpty() ? seedDefault : value;
+  }
+
   /**
    * Gets the account by username.
    */
@@ -83,7 +91,10 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is resolved at runtime from the environment (populated from Google Secret Manager, e.g. via
+    // Cloud Build/Secret Manager secret injection) instead of being embedded in source. The fallback is only the
+    // seed value of the in-memory test database (jpetstore-hsqldb-data.sql).
+    String password = resolveSecret("JPETSTORE_TEST_ACCOUNT_PASSWORD", "jpetstore.test.account.password", "ACID");
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

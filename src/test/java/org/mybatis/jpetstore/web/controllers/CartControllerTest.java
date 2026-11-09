@@ -35,6 +35,11 @@ import org.springframework.ui.Model;
 
 /**
  * The Class CartControllerTest.
+ *
+ * <p>
+ * Session state is externalised to Memorystore for Redis via Spring Session (see RedisSessionConfiguration). The
+ * {@code HttpSession} instances used here are in-memory test doubles of the Spring Session-backed session; the tests do
+ * not depend on any container-local session storage.
  */
 @ExtendWith(MockitoExtension.class)
 class CartControllerTest {
@@ -278,5 +283,25 @@ class CartControllerTest {
     assertThat(model.asMap().get("cart")).isInstanceOf(Cart.class);
     org.mockito.Mockito.verify(session).setAttribute(org.mockito.ArgumentMatchers.eq("cart"),
         org.mockito.ArgumentMatchers.any(Cart.class));
+  }
+
+  /**
+   * Add item writes the cart back to the (Redis-backed) session so the change is persisted.
+   */
+  @Test
+  void addItemWritesCartBackToSession() {
+    HttpSession session = mock(HttpSession.class);
+    Model model = new ExtendedModelMap();
+    Cart cart = new Cart();
+    Item item = new Item();
+    item.setItemId("EST-1");
+    item.setListPrice(new java.math.BigDecimal("10.00"));
+    when(session.getAttribute("cart")).thenReturn(cart);
+    when(catalogService.isItemInStock("EST-1")).thenReturn(true);
+    when(catalogService.getItem("EST-1")).thenReturn(item);
+
+    cartController.addItemToCart("EST-1", session, model);
+
+    org.mockito.Mockito.verify(session).setAttribute("cart", cart);
   }
 }

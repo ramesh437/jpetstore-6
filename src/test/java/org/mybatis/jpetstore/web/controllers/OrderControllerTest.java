@@ -38,6 +38,11 @@ import org.springframework.ui.Model;
 
 /**
  * The Class OrderControllerTest.
+ *
+ * <p>
+ * Session state is externalised to Memorystore for Redis via Spring Session (see RedisSessionConfiguration). The
+ * {@code HttpSession} instances used here are in-memory test doubles of the Spring Session-backed session; the tests do
+ * not depend on any container-local session storage.
  */
 @ExtendWith(MockitoExtension.class)
 class OrderControllerTest {

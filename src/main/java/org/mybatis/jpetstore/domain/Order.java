@@ -18,7 +18,7 @@ package org.mybatis.jpetstore.domain;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -611,7 +611,7 @@ public class Order implements Serializable {
   public void initOrder(Account account, Cart cart) {
 
     username = account.getUsername();
-    orderDate = LocalDateTime.now(ZoneId.systemDefault());
+    orderDate = LocalDateTime.now(ZoneOffset.UTC);
 
     shipToFirstName = account.getFirstName();
     shipToLastName = account.getLastName();

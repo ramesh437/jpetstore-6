@@ -23,10 +23,11 @@ import java.net.Authenticator;
 import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.ThreadLocalRandom;
+import java.security.SecureRandom;
 
 /**
  * The Class MavenWrapperDownloader.
@@ -36,8 +37,53 @@ public final class MavenWrapperDownloader {
     /** The wrapper version. */
     private static final String WRAPPER_VERSION = "3.3.4";
 
+    /** Connection timeout in milliseconds (override with MVNW_CONNECT_TIMEOUT_MS). */
+    private static final int CONNECT_TIMEOUT_MS = readTimeoutEnv("MVNW_CONNECT_TIMEOUT_MS", 10000);
+
+    /** Read timeout in milliseconds (override with MVNW_READ_TIMEOUT_MS). */
+    private static final int READ_TIMEOUT_MS = readTimeoutEnv("MVNW_READ_TIMEOUT_MS", 30000);
+
+    /** Shared random generator (no per-thread state). */
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     /** The verbose. */
     private static final boolean VERBOSE = Boolean.parseBoolean(System.getenv("MVNW_VERBOSE"));
+
+    /** In-progress temp file, cleaned up by the shutdown hook on SIGTERM/SIGINT. */
+    private static volatile Path currentTemp;
+
+    static {
+        // Graceful shutdown: release partially downloaded resources when the process receives SIGTERM.
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            final Path temp = currentTemp;
+            if (temp != null) {
+                try {
+                    Files.deleteIfExists(temp);
+                } catch (IOException e) {
+                    // best effort during shutdown
+                }
+            }
+        }, "mvnw-downloader-shutdown-hook"));
+    }
+
+    /**
+     * Read a timeout value from an environment variable.
+     *
+     * @param name the environment variable name
+     * @param defaultValue the default value in milliseconds
+     * @return the timeout in milliseconds
+     */
+    private static int readTimeoutEnv(String name, int defaultValue) {
+        final String value = System.getenv(name);
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
 
     /**
      * Main.
@@ -94,12 +140,17 @@ public final class MavenWrapperDownloader {
         Path temp = wrapperJarPath
                 .getParent()
                 .resolve(wrapperJarPath.getFileName() + "."
-                        + Long.toUnsignedString(ThreadLocalRandom.current().nextLong()) + ".tmp");
-        try (InputStream inStream = wrapperUrl.openStream()) {
+                        + Long.toUnsignedString(RANDOM.nextLong()) + ".tmp");
+        currentTemp = temp;
+        final URLConnection connection = wrapperUrl.openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
+        try (InputStream inStream = connection.getInputStream()) {
             Files.copy(inStream, temp, StandardCopyOption.REPLACE_EXISTING);
             Files.move(temp, wrapperJarPath, StandardCopyOption.REPLACE_EXISTING);
         } finally {
             Files.deleteIfExists(temp);
+            currentTemp = null;
         }
         log(" - Downloader complete");
     }

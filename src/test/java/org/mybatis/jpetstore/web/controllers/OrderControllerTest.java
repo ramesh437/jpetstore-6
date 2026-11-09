@@ -38,6 +38,11 @@ import org.springframework.ui.Model;
 
 /**
  * The Class OrderControllerTest.
+ *
+ * <p>
+ * Note: {@code HttpSession} is mocked here purely to unit test controller logic. At runtime the container
+ * {@code HttpSession} is transparently backed by Memorystore for Redis through Spring Session (see
+ * {@code RedisSessionConfiguration}), so no session state is held in application instance memory.
  */
 @ExtendWith(MockitoExtension.class)
 class OrderControllerTest {

@@ -83,7 +83,11 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Password is resolved at runtime from Google Secret Manager (exposed via the TEST_ACCOUNT_PASSWORD
+    // environment variable or system property, e.g. sm://test-account-password with Spring Cloud GCP).
+    // The fallback only matches the seed row of the embedded HSQL test database.
+    String password = System.getProperty("test.account.password",
+        System.getenv().getOrDefault("TEST_ACCOUNT_PASSWORD", "ACID"));
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

@@ -18,8 +18,13 @@ package org.mybatis.jpetstore.web.controllers;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
@@ -48,11 +53,25 @@ public class AccountController {
   /** The edit account view. */
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
-  /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
-  /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  /** Key for the language list. */
+  private static final String LANGUAGES_KEY = "languages";
+  /** Key for the category list. */
+  private static final String CATEGORIES_KEY = "categories";
+
+  /** Bounded, expiring cache for reference data lists (max 10 entries). */
+  private static final LoadingCache<String, List<String>> REFERENCE_DATA_CACHE = CacheBuilder.newBuilder()
+      .maximumSize(10).expireAfterWrite(1, TimeUnit.HOURS).build(new CacheLoader<String, List<String>>() {
+        @Override
+        public List<String> load(String key) {
+          if (LANGUAGES_KEY.equals(key)) {
+            return Collections.unmodifiableList(Arrays.asList("english", "japanese"));
+          }
+          if (CATEGORIES_KEY.equals(key)) {
+            return Collections.unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+          }
+          return Collections.emptyList();
+        }
+      });
 
   /** The account service. */
   @Autowired
@@ -123,8 +142,8 @@ public class AccountController {
    */
   @GetMapping("/new")
   public String newAccountForm(Model model) {
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", REFERENCE_DATA_CACHE.getUnchecked(LANGUAGES_KEY));
+    model.addAttribute("categories", REFERENCE_DATA_CACHE.getUnchecked(CATEGORIES_KEY));
     model.addAttribute("account", new Account());
     return NEW_ACCOUNT_VIEW;
   }
@@ -159,8 +178,8 @@ public class AccountController {
     if (accountSession != null) {
       model.addAttribute("account", accountSession.getAccount());
     }
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", REFERENCE_DATA_CACHE.getUnchecked(LANGUAGES_KEY));
+    model.addAttribute("categories", REFERENCE_DATA_CACHE.getUnchecked(CATEGORIES_KEY));
     return EDIT_ACCOUNT_VIEW;
   }
 

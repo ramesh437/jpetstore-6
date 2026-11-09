@@ -83,7 +83,14 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is not embedded in source. It is resolved at runtime from the environment variable
+    // TEST_ACID_PASSWORD, which is injected from Google Secret Manager (e.g. Cloud Run/GKE/Cloud Build
+    // "secret as environment variable" binding). If not provided, it falls back to the externally
+    // provisioned test data store seeded by the schema/data scripts.
+    String password = System.getenv("TEST_ACID_PASSWORD");
+    if (password == null || password.isEmpty()) {
+      password = jdbcTemplate.queryForObject("SELECT password FROM signon WHERE username = ?", String.class, username);
+    }
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

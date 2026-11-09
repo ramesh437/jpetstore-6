@@ -47,7 +47,8 @@ public class CartController {
   private CatalogService catalogService;
 
   /**
-   * Get cart.
+   * Get cart. Session state is persisted in Memorystore for Redis (Spring Session), so mutated carts must be written
+   * back with {@link #saveCart(HttpSession, Cart)}.
    *
    * @param session
    *          the session
@@ -61,6 +62,18 @@ public class CartController {
       session.setAttribute("cart", cart);
     }
     return cart;
+  }
+
+  /**
+   * Persist the cart to the externalized (Redis-backed) session.
+   *
+   * @param session
+   *          the session
+   * @param cart
+   *          the cart
+   */
+  private void saveCart(HttpSession session, Cart cart) {
+    session.setAttribute("cart", cart);
   }
 
   /**
@@ -106,6 +119,7 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    saveCart(session, cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -135,6 +149,7 @@ public class CartController {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
     }
+    saveCart(session, cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -168,6 +183,7 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    saveCart(session, cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }

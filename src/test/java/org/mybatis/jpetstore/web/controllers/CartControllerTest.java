@@ -279,4 +279,24 @@ class CartControllerTest {
     org.mockito.Mockito.verify(session).setAttribute(org.mockito.ArgumentMatchers.eq("cart"),
         org.mockito.ArgumentMatchers.any(Cart.class));
   }
+
+  /**
+   * Add item writes the mutated cart back to the session so the change is persisted in the Redis-backed (Memorystore)
+   * session store.
+   */
+  @Test
+  void addItemWritesCartBackToExternalizedSession() {
+    HttpSession session = mock(HttpSession.class);
+    Model model = new ExtendedModelMap();
+    Cart cart = new Cart();
+    Item item = new Item();
+    item.setItemId("EST-1");
+    item.setListPrice(new java.math.BigDecimal("10.00"));
+    cart.addItem(item, true);
+    when(session.getAttribute("cart")).thenReturn(cart);
+
+    cartController.addItemToCart("EST-1", session, model);
+
+    org.mockito.Mockito.verify(session).setAttribute("cart", cart);
+  }
 }

@@ -15,9 +15,13 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableList;
+
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpSession;
 
@@ -39,6 +43,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 @RequestMapping("/order")
 public class OrderController {
+  // Session state is stored in Memorystore for Redis via Spring Session; see RedisSessionConfiguration.
 
   /** The new order view. */
   private static final String NEW_ORDER_VIEW = "order/NewOrderForm";
@@ -53,9 +58,20 @@ public class OrderController {
   /** The error view. */
   private static final String ERROR_VIEW = "common/Error";
 
-  /** The card type list. */
-  private static final List<String> CARD_TYPE_LIST = Collections
-      .unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
+  /** Key for the card type list. */
+  private static final String CARD_TYPES_KEY = "cardTypes";
+
+  /** Bounded, eviction-aware cache for reference data (max 10 entries, expires after 1 hour of inactivity). */
+  private static final LoadingCache<String, List<String>> REFERENCE_DATA_CACHE = CacheBuilder.newBuilder()
+      .maximumSize(10).expireAfterAccess(1, TimeUnit.HOURS).build(new CacheLoader<String, List<String>>() {
+        @Override
+        public List<String> load(String key) {
+          if (CARD_TYPES_KEY.equals(key)) {
+            return ImmutableList.of("Visa", "MasterCard", "American Express");
+          }
+          return ImmutableList.of();
+        }
+      });
 
   /** The order service. */
   @Autowired
@@ -111,7 +127,7 @@ public class OrderController {
       order.initOrder(accountSession.getAccount(), cart);
       session.setAttribute("order", order);
       model.addAttribute("order", order);
-      model.addAttribute("creditCardTypes", CARD_TYPE_LIST);
+      model.addAttribute("creditCardTypes", REFERENCE_DATA_CACHE.getUnchecked(CARD_TYPES_KEY));
       return NEW_ORDER_VIEW;
     }
     model.addAttribute("message", "An order could not be created because a cart could not be found.");

@@ -15,9 +15,13 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableList;
+
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpSession;
 
@@ -40,6 +44,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 @RequestMapping("/account")
 public class AccountController {
+  // Session state is stored in Memorystore for Redis via Spring Session; see RedisSessionConfiguration.
 
   /** The signon view. */
   private static final String SIGNON_VIEW = "account/SignonForm";
@@ -48,11 +53,25 @@ public class AccountController {
   /** The edit account view. */
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
-  /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
-  /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  /** Key for the language list. */
+  private static final String LANGUAGES_KEY = "languages";
+  /** Key for the category list. */
+  private static final String CATEGORIES_KEY = "categories";
+
+  /** Bounded, eviction-aware cache for reference data (max 10 entries, expires after 1 hour of inactivity). */
+  private static final LoadingCache<String, List<String>> REFERENCE_DATA_CACHE = CacheBuilder.newBuilder()
+      .maximumSize(10).expireAfterAccess(1, TimeUnit.HOURS).build(new CacheLoader<String, List<String>>() {
+        @Override
+        public List<String> load(String key) {
+          if (LANGUAGES_KEY.equals(key)) {
+            return ImmutableList.of("english", "japanese");
+          }
+          if (CATEGORIES_KEY.equals(key)) {
+            return ImmutableList.of("FISH", "DOGS", "REPTILES", "CATS", "BIRDS");
+          }
+          return ImmutableList.of();
+        }
+      });
 
   /** The account service. */
   @Autowired
@@ -123,8 +142,8 @@ public class AccountController {
    */
   @GetMapping("/new")
   public String newAccountForm(Model model) {
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", REFERENCE_DATA_CACHE.getUnchecked(LANGUAGES_KEY));
+    model.addAttribute("categories", REFERENCE_DATA_CACHE.getUnchecked(CATEGORIES_KEY));
     model.addAttribute("account", new Account());
     return NEW_ACCOUNT_VIEW;
   }
@@ -159,8 +178,8 @@ public class AccountController {
     if (accountSession != null) {
       model.addAttribute("account", accountSession.getAccount());
     }
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", REFERENCE_DATA_CACHE.getUnchecked(LANGUAGES_KEY));
+    model.addAttribute("categories", REFERENCE_DATA_CACHE.getUnchecked(CATEGORIES_KEY));
     return EDIT_ACCOUNT_VIEW;
   }
 

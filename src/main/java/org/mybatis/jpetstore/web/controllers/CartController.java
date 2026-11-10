@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 @RequestMapping("/cart")
 public class CartController {
+  // Session state (cart) is stored in Memorystore for Redis via Spring Session; see RedisSessionConfiguration.
 
   /** The error view. */
   private static final String ERROR_VIEW = "common/Error";
@@ -61,6 +62,19 @@ public class CartController {
       session.setAttribute("cart", cart);
     }
     return cart;
+  }
+
+  /**
+   * Writes the cart back to the session. The session is backed by Memorystore for Redis (Spring Session), which only
+   * persists attributes that are explicitly set, so in-place changes to the cart must be written back.
+   *
+   * @param session
+   *          the session (Redis-backed)
+   * @param cart
+   *          the cart to persist
+   */
+  private void saveCart(HttpSession session, Cart cart) {
+    session.setAttribute("cart", cart);
   }
 
   /**
@@ -106,6 +120,7 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    saveCart(session, cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -135,6 +150,7 @@ public class CartController {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
     }
+    saveCart(session, cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -168,6 +184,7 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    saveCart(session, cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }

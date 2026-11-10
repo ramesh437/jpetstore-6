@@ -76,6 +76,19 @@ class AccountMapperTest {
 
   }
 
+  private String resolveTestPassword(String username) {
+    String configured = System.getProperty("jpetstore.test.account.password",
+        System.getenv("JPETSTORE_TEST_ACCOUNT_PASSWORD"));
+    if (configured != null && !configured.isEmpty()) {
+      return configured;
+    }
+    return jdbcTemplate.queryForObject("SELECT PASSWORD FROM SIGNON WHERE USERNAME = ?", String.class, username);
+  }
+
+  private String generateTestPassword() {
+    return java.util.UUID.randomUUID().toString();
+  }
+
   /**
    * Gets the account by username and password.
    */
@@ -83,7 +96,10 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is resolved at runtime (system property / environment variable, e.g. populated from
+    // Google Secret Manager via sm:// references) instead of being embedded in source. When none is supplied,
+    // the seeded fixture value is read from the test database.
+    String password = resolveTestPassword(username);
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);
@@ -179,7 +195,7 @@ class AccountMapperTest {
     // given
     Account account = new Account();
     account.setUsername("mybatis");
-    account.setPassword("password");
+    account.setPassword(generateTestPassword());
 
     // when
     mapper.insertSignon(account);
@@ -262,7 +278,7 @@ class AccountMapperTest {
     // given
     Account account = new Account();
     account.setUsername("j2ee");
-    account.setPassword("password");
+    account.setPassword(generateTestPassword());
 
     // when
     mapper.updateSignon(account);

@@ -18,8 +18,12 @@ package org.mybatis.jpetstore.web.controllers;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Order;
@@ -53,9 +57,26 @@ public class OrderController {
   /** The error view. */
   private static final String ERROR_VIEW = "common/Error";
 
-  /** The card type list. */
-  private static final List<String> CARD_TYPE_LIST = Collections
-      .unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
+  /** Cache key for the card type list. */
+  private static final String CARD_TYPE_KEY = "cardTypes";
+
+  /** Bounded cache of static reference lists (size limited to prevent unbounded growth). */
+  private static final Cache<String, List<String>> REFERENCE_LISTS = CacheBuilder.newBuilder().maximumSize(10)
+      .expireAfterAccess(1, TimeUnit.HOURS).build();
+
+  /**
+   * Gets the card type list.
+   *
+   * @return the card type list
+   */
+  private static List<String> cardTypeList() {
+    List<String> list = REFERENCE_LISTS.getIfPresent(CARD_TYPE_KEY);
+    if (list == null) {
+      list = Collections.unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
+      REFERENCE_LISTS.put(CARD_TYPE_KEY, list);
+    }
+    return list;
+  }
 
   /** The order service. */
   @Autowired
@@ -111,7 +132,7 @@ public class OrderController {
       order.initOrder(accountSession.getAccount(), cart);
       session.setAttribute("order", order);
       model.addAttribute("order", order);
-      model.addAttribute("creditCardTypes", CARD_TYPE_LIST);
+      model.addAttribute("creditCardTypes", cardTypeList());
       return NEW_ORDER_VIEW;
     }
     model.addAttribute("message", "An order could not be created because a cart could not be found.");

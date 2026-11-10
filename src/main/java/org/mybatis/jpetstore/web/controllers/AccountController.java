@@ -15,11 +15,13 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.ImmutableList;
 
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
@@ -48,11 +50,28 @@ public class AccountController {
   /** The edit account view. */
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
+  /** Maximum number of entries held in the bounded reference-data cache. */
+  private static final int REFERENCE_CACHE_MAX_SIZE = 10;
+  /** Cache key for the language list. */
+  private static final String LANGUAGES_KEY = "languages";
+  /** Cache key for the category list. */
+  private static final String CATEGORIES_KEY = "categories";
+
+  /** Bounded Guava cache holding immutable reference data lists. */
+  private static final Cache<String, List<String>> REFERENCE_DATA_CACHE = CacheBuilder.newBuilder()
+      .maximumSize(REFERENCE_CACHE_MAX_SIZE).build();
+
   /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
+  private static final List<String> LANGUAGE_LIST = loadReferenceData(LANGUAGES_KEY,
+      ImmutableList.of("english", "japanese"));
   /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  private static final List<String> CATEGORY_LIST = loadReferenceData(CATEGORIES_KEY,
+      ImmutableList.of("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+
+  private static List<String> loadReferenceData(String key, List<String> values) {
+    REFERENCE_DATA_CACHE.put(key, values);
+    return values;
+  }
 
   /** The account service. */
   @Autowired

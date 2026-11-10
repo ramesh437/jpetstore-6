@@ -15,11 +15,13 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.ImmutableList;
 
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Order;
@@ -53,9 +55,23 @@ public class OrderController {
   /** The error view. */
   private static final String ERROR_VIEW = "common/Error";
 
+  /** Maximum number of entries held in the bounded reference-data cache. */
+  private static final int REFERENCE_CACHE_MAX_SIZE = 10;
+  /** Cache key for the card type list. */
+  private static final String CARD_TYPES_KEY = "cardTypes";
+
+  /** Bounded Guava cache holding immutable reference data lists. */
+  private static final Cache<String, List<String>> REFERENCE_DATA_CACHE = CacheBuilder.newBuilder()
+      .maximumSize(REFERENCE_CACHE_MAX_SIZE).build();
+
   /** The card type list. */
-  private static final List<String> CARD_TYPE_LIST = Collections
-      .unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
+  private static final List<String> CARD_TYPE_LIST = loadReferenceData(CARD_TYPES_KEY,
+      ImmutableList.of("Visa", "MasterCard", "American Express"));
+
+  private static List<String> loadReferenceData(String key, List<String> values) {
+    REFERENCE_DATA_CACHE.put(key, values);
+    return values;
+  }
 
   /** The order service. */
   @Autowired

@@ -77,13 +77,33 @@ class AccountMapperTest {
   }
 
   /**
+   * Resolve the test user's password from an externalized secret (env var / system property populated from Google
+   * Secret Manager), falling back to the value stored in the seeded test database.
+   *
+   * @param username
+   *          the username
+   *
+   * @return the password
+   */
+  private String resolveTestPassword(String username) {
+    String key = "JPETSTORE_TEST_ACCOUNT_PASSWORD";
+    String secret = System.getProperty(key, System.getenv(key));
+    if (secret != null && !secret.isEmpty()) {
+      return secret;
+    }
+    return jdbcTemplate.queryForObject("SELECT password FROM signon WHERE username = ?", String.class, username);
+  }
+
+  /**
    * Gets the account by username and password.
    */
   @Test
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is externalized (no hard-coded value). In GCP it is injected from Google Secret Manager
+    // (e.g. via Spring Cloud GCP "sm://" property / env var mapping); locally it falls back to the seeded DB value.
+    String password = resolveTestPassword(username);
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

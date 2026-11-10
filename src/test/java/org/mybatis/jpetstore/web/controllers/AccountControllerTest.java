@@ -66,6 +66,7 @@ class AccountControllerTest {
    */
   @Test
   void signonWithInvalidCredentialsReturnsSignonView() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed for unit isolation.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(accountService.getAccount("bad", "bad")).thenReturn(null);
@@ -81,6 +82,7 @@ class AccountControllerTest {
    */
   @Test
   void signonWithValidCredentialsRedirects() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed for unit isolation.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     Account account = new Account();
@@ -111,6 +113,7 @@ class AccountControllerTest {
    */
   @Test
   void signoffInvalidatesSessionAndRedirectsToCatalog() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed for unit isolation.
     HttpSession session = mock(HttpSession.class);
 
     String view = accountController.signoff(session);
@@ -161,6 +164,7 @@ class AccountControllerTest {
   void editAccountRedirectsToEditPageNotCatalog() {
     // After saving account, should redirect to /account/edit so the user stays
     // on their profile page (the IT test expects the edit form to reload).
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed for unit isolation.
     HttpSession session = mock(HttpSession.class);
     Account account = new Account();
     account.setUsername("j2ee");
@@ -178,6 +182,7 @@ class AccountControllerTest {
    */
   @Test
   void editAccountFormWithSessionReturnsEditAccountViewWithAccount() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed for unit isolation.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     Account account = new Account();
@@ -198,6 +203,7 @@ class AccountControllerTest {
    */
   @Test
   void editAccountFormWithoutSessionReturnsEditAccountViewWithoutAccount() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed for unit isolation.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);

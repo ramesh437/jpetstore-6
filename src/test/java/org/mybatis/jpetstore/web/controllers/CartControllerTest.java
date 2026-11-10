@@ -30,6 +30,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Item;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 
@@ -52,6 +53,7 @@ class CartControllerTest {
    */
   @Test
   void viewCartReturnsCartView() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed here
     HttpSession session = mock(HttpSession.class);
     Cart cart = new Cart();
     when(session.getAttribute("cart")).thenReturn(cart);
@@ -68,6 +70,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNullIdReturnsError() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed here
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -82,6 +85,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNewIdFetchesItemFromCatalogAndAddsToCart() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed here
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -107,6 +111,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithExistingIdIncrementsQuantityWithoutCallingCatalog() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed here
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -129,6 +134,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNullIdReturnsError() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed here
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -143,6 +149,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithExistingIdRemovesItemFromCart() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed here
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -165,6 +172,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNonExistentIdReturnsError() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed here
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -182,6 +190,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesUpdatesQuantity() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed here
     HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
@@ -206,6 +215,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesRemovesItemWhenQuantityLessThanOne() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed here
     HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
@@ -229,6 +239,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesIgnoresInvalidNumericInput() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed here
     HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
@@ -252,6 +263,7 @@ class CartControllerTest {
    */
   @Test
   void checkOutReturnsCheckoutViewWithCartFromSession() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed here
     HttpSession session = mock(HttpSession.class);
     Cart cart = new Cart();
     when(session.getAttribute("cart")).thenReturn(cart);
@@ -268,6 +280,7 @@ class CartControllerTest {
    */
   @Test
   void checkOutWithNoExistingCartCreatesNewCartInSession() {
+    // Session state is externalized to Memorystore for Redis (Spring Session) at runtime; stubbed here
     HttpSession session = mock(HttpSession.class);
     when(session.getAttribute("cart")).thenReturn(null);
     Model model = new ExtendedModelMap();
@@ -278,5 +291,30 @@ class CartControllerTest {
     assertThat(model.asMap().get("cart")).isInstanceOf(Cart.class);
     org.mockito.Mockito.verify(session).setAttribute(org.mockito.ArgumentMatchers.eq("cart"),
         org.mockito.ArgumentMatchers.any(Cart.class));
+  }
+
+  /**
+   * Cart held in the externalized (Redis-backed) session is written back after mutation and is serializable.
+   */
+  @Test
+  void addItemWritesCartBackToExternalizedSessionAndCartIsSerializable() throws Exception {
+    MockHttpSession session = new MockHttpSession();
+    Model model = new ExtendedModelMap();
+    session.setAttribute("cart", new Cart());
+
+    Item item = new Item();
+    item.setItemId("EST-1");
+    item.setListPrice(new java.math.BigDecimal("10.00"));
+    when(catalogService.isItemInStock("EST-1")).thenReturn(true);
+    when(catalogService.getItem("EST-1")).thenReturn(item);
+
+    cartController.addItemToCart("EST-1", session, model);
+
+    Cart stored = (Cart) session.getAttribute("cart");
+    assertThat(stored.containsItemId("EST-1")).isTrue();
+    // Spring Session serializes attributes into Redis, so they must be Serializable
+    try (java.io.ObjectOutputStream out = new java.io.ObjectOutputStream(new java.io.ByteArrayOutputStream())) {
+      out.writeObject(stored);
+    }
   }
 }

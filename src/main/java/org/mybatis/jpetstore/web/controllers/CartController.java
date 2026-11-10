@@ -106,6 +106,8 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    // Write back so the externalized (Redis-backed) session persists the mutated cart
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -135,6 +137,8 @@ public class CartController {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
     }
+    // Write back so the externalized (Redis-backed) session persists the mutated cart
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -168,6 +172,8 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    // Write back so the externalized (Redis-backed) session persists the mutated cart
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }

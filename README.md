@@ -18,7 +18,7 @@ JPetStore 6 is a full web application built on top of MyBatis 3, Spring 5 and St
 - JPetstore on MyBatis Spring Boot Starter https://github.com/kazuki43zoo/mybatis-spring-boot-jpetstore
 
 ## Run on Application Server
-Running JPetStore sample under Tomcat (using the [cargo-maven2-plugin](https://codehaus-cargo.github.io/cargo/Maven2+plugin.html)).
+JPetStore is packaged as a self-contained executable JAR with an embedded Tomcat (no external application server needed; suitable for GKE, Cloud Run and App Engine flexible environment).
 
 - Clone this repository
 
@@ -26,17 +26,17 @@ Running JPetStore sample under Tomcat (using the [cargo-maven2-plugin](https://c
   $ git clone https://github.com/mybatis/jpetstore-6.git
   ```
 
-- Build war file
+- Build executable jar file
 
   ```
   $ cd jpetstore-6
   $ ./mvnw clean package
   ```
 
-- Startup the Tomcat server and deploy web application
+- Startup the embedded Tomcat server (`PORT` and `CONTEXT_PATH` environment variables configure the port (default 8080) and the context path (default root))
 
   ```
-  $ ./mvnw cargo:run -P tomcat9
+  $ java -jar target/jpetstore.jar
   ```
 
   > Note:
@@ -54,7 +54,7 @@ Running JPetStore sample under Tomcat (using the [cargo-maven2-plugin](https://c
   > | tomee8              | Running under the TomEE 8.0         |
   > | wildfly26           | Running under the WildFly 26        |
 
-- Run application in browser http://localhost:8080/jpetstore/
+- Run application in browser http://localhost:8080/
 - Press Ctrl-C to stop the server.
 
 - When using 'glassfish5', it must run under java 8 as it does not work with newer versions.  The code is set to 'D:/jdk/jdk-1.8.0.501'.  Your usage likely differs, so simply call with '-Dcargo.java.home=PATH-TO-JDK8'.

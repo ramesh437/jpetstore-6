@@ -38,6 +38,11 @@ import org.springframework.ui.Model;
 
 /**
  * The Class AccountControllerTest.
+ *
+ * <p>
+ * {@code HttpSession} is mocked through the Servlet API; in the deployed application the real session is transparently
+ * backed by Memorystore for Redis (Spring Session, see {@code RedisSessionConfig}), so session attributes stored by
+ * the controllers must remain {@link java.io.Serializable}.
  */
 @ExtendWith(MockitoExtension.class)
 class AccountControllerTest {

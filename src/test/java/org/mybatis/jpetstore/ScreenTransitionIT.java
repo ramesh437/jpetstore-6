@@ -37,6 +37,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.catalina.startup.Tomcat;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -48,6 +50,30 @@ import org.openqa.selenium.By;
  */
 @ExtendWith(ScreenShooterExtension.class)
 class ScreenTransitionIT {
+
+  private static Tomcat tomcat;
+
+  /**
+   * Start the embedded server (the application is packaged as an executable JAR with embedded Tomcat).
+   *
+   * @throws Exception
+   *           if the server cannot be started
+   */
+  @BeforeAll
+  static void startServer() throws Exception {
+    tomcat = JpetstoreApplication.createServer(8080, "/jpetstore");
+    tomcat.start();
+  }
+
+  /**
+   * Stop the embedded server.
+   */
+  @AfterAll
+  static void stopServer() {
+    if (tomcat != null) {
+      JpetstoreApplication.stopQuietly(tomcat);
+    }
+  }
 
   /**
    * Setup selenide.
@@ -215,7 +241,7 @@ class ScreenTransitionIT {
     $(By.cssSelector("#Catalog h3")).shouldBe(text("User Information"));
 
     // Create a new user
-    String userId = String.valueOf(System.currentTimeMillis());
+    String userId = String.valueOf(java.time.Instant.now(java.time.Clock.systemUTC()).toEpochMilli());
     $(By.name("username")).setValue(userId);
     $(By.name("password")).setValue("password");
     $(By.name("repeatedPassword")).setValue("password");

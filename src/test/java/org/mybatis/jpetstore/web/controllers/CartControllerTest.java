@@ -20,7 +20,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Item;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.mybatis.jpetstore.web.session.SessionStore;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 
@@ -38,6 +38,10 @@ import org.springframework.ui.Model;
  */
 @ExtendWith(MockitoExtension.class)
 class CartControllerTest {
+
+  /** The external session store. */
+  @Mock
+  private SessionStore sessionStore;
 
   /** The catalog service. */
   @Mock
@@ -52,12 +56,11 @@ class CartControllerTest {
    */
   @Test
   void viewCartReturnsCartView() {
-    HttpSession session = mock(HttpSession.class);
     Cart cart = new Cart();
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(sessionStore.get("cart")).thenReturn(cart);
     Model model = new ExtendedModelMap();
 
-    String view = cartController.viewCart(session, model);
+    String view = cartController.viewCart(model);
 
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(model.asMap()).containsKey("cart");
@@ -68,10 +71,9 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNullIdReturnsError() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
-    String view = cartController.addItemToCart(null, session, model);
+    String view = cartController.addItemToCart(null, model);
 
     assertThat(view).isEqualTo("common/Error");
     assertThat(model.asMap()).containsKey("message");
@@ -82,11 +84,10 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNewIdFetchesItemFromCatalogAndAddsToCart() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(sessionStore.get("cart")).thenReturn(cart);
 
     Item item = new Item();
     item.setItemId("EST-1");
@@ -94,7 +95,7 @@ class CartControllerTest {
     when(catalogService.isItemInStock("EST-1")).thenReturn(true);
     when(catalogService.getItem("EST-1")).thenReturn(item);
 
-    String view = cartController.addItemToCart("EST-1", session, model);
+    String view = cartController.addItemToCart("EST-1", model);
 
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.containsItemId("EST-1")).isTrue();
@@ -107,7 +108,6 @@ class CartControllerTest {
    */
   @Test
   void addItemWithExistingIdIncrementsQuantityWithoutCallingCatalog() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
@@ -115,9 +115,9 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(sessionStore.get("cart")).thenReturn(cart);
 
-    String view = cartController.addItemToCart("EST-1", session, model);
+    String view = cartController.addItemToCart("EST-1", model);
 
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.getCartItemList().get(0).getQuantity()).isEqualTo(2);
@@ -129,10 +129,9 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNullIdReturnsError() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
-    String view = cartController.removeItemFromCart(null, session, model);
+    String view = cartController.removeItemFromCart(null, model);
 
     assertThat(view).isEqualTo("common/Error");
     assertThat(model.asMap()).containsKey("message");
@@ -143,7 +142,6 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithExistingIdRemovesItemFromCart() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
@@ -151,9 +149,9 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(sessionStore.get("cart")).thenReturn(cart);
 
-    String view = cartController.removeItemFromCart("EST-1", session, model);
+    String view = cartController.removeItemFromCart("EST-1", model);
 
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.containsItemId("EST-1")).isFalse();
@@ -165,13 +163,12 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNonExistentIdReturnsError() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(sessionStore.get("cart")).thenReturn(cart);
 
-    String view = cartController.removeItemFromCart("NOT-THERE", session, model);
+    String view = cartController.removeItemFromCart("NOT-THERE", model);
 
     assertThat(view).isEqualTo("common/Error");
     assertThat(model.asMap()).containsKey("message");
@@ -182,7 +179,6 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesUpdatesQuantity() {
-    HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -191,10 +187,10 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(sessionStore.get("cart")).thenReturn(cart);
     when(request.getParameter("EST-1")).thenReturn("3");
 
-    String view = cartController.updateCartQuantities(request, session, model);
+    String view = cartController.updateCartQuantities(request, model);
 
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.containsItemId("EST-1")).isTrue();
@@ -206,7 +202,6 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesRemovesItemWhenQuantityLessThanOne() {
-    HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -215,10 +210,10 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(sessionStore.get("cart")).thenReturn(cart);
     when(request.getParameter("EST-1")).thenReturn("0");
 
-    String view = cartController.updateCartQuantities(request, session, model);
+    String view = cartController.updateCartQuantities(request, model);
 
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.getCartItemList()).isEmpty();
@@ -229,7 +224,6 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesIgnoresInvalidNumericInput() {
-    HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -238,10 +232,10 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(sessionStore.get("cart")).thenReturn(cart);
     when(request.getParameter("EST-1")).thenReturn("not-a-number");
 
-    String view = cartController.updateCartQuantities(request, session, model);
+    String view = cartController.updateCartQuantities(request, model);
 
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.getCartItemList().get(0).getQuantity()).isEqualTo(1);
@@ -252,12 +246,11 @@ class CartControllerTest {
    */
   @Test
   void checkOutReturnsCheckoutViewWithCartFromSession() {
-    HttpSession session = mock(HttpSession.class);
     Cart cart = new Cart();
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(sessionStore.get("cart")).thenReturn(cart);
     Model model = new ExtendedModelMap();
 
-    String view = cartController.checkOut(session, model);
+    String view = cartController.checkOut(model);
 
     assertThat(view).isEqualTo("cart/Checkout");
     assertThat(model.asMap().get("cart")).isSameAs(cart);
@@ -268,15 +261,14 @@ class CartControllerTest {
    */
   @Test
   void checkOutWithNoExistingCartCreatesNewCartInSession() {
-    HttpSession session = mock(HttpSession.class);
-    when(session.getAttribute("cart")).thenReturn(null);
+    when(sessionStore.get("cart")).thenReturn(null);
     Model model = new ExtendedModelMap();
 
-    String view = cartController.checkOut(session, model);
+    String view = cartController.checkOut(model);
 
     assertThat(view).isEqualTo("cart/Checkout");
     assertThat(model.asMap().get("cart")).isInstanceOf(Cart.class);
-    org.mockito.Mockito.verify(session).setAttribute(org.mockito.ArgumentMatchers.eq("cart"),
+    org.mockito.Mockito.verify(sessionStore).set(org.mockito.ArgumentMatchers.eq("cart"),
         org.mockito.ArgumentMatchers.any(Cart.class));
   }
 }

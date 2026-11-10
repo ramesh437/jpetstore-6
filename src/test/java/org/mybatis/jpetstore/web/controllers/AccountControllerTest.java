@@ -16,14 +16,12 @@
 package org.mybatis.jpetstore.web.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 
-import javax.servlet.http.HttpSession;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.service.AccountService;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.mybatis.jpetstore.web.session.SessionStore;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 
@@ -41,6 +40,10 @@ import org.springframework.ui.Model;
  */
 @ExtendWith(MockitoExtension.class)
 class AccountControllerTest {
+
+  /** The external session store. */
+  @Mock
+  private SessionStore sessionStore;
 
   /** The account service. */
   @Mock
@@ -66,11 +69,10 @@ class AccountControllerTest {
    */
   @Test
   void signonWithInvalidCredentialsReturnsSignonView() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(accountService.getAccount("bad", "bad")).thenReturn(null);
 
-    String view = accountController.signon("bad", "bad", session, model);
+    String view = accountController.signon("bad", "bad", model);
 
     assertThat(view).isEqualTo("account/SignonForm");
     assertThat(model.asMap()).containsKey("message");
@@ -81,7 +83,6 @@ class AccountControllerTest {
    */
   @Test
   void signonWithValidCredentialsRedirects() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     Account account = new Account();
     account.setUsername("j2ee");
@@ -89,7 +90,7 @@ class AccountControllerTest {
     when(accountService.getAccount("j2ee", "j2ee")).thenReturn(account);
     when(catalogService.getProductListByCategory("FISH")).thenReturn(List.of());
 
-    String view = accountController.signon("j2ee", "j2ee", session, model);
+    String view = accountController.signon("j2ee", "j2ee", model);
 
     assertThat(view).isEqualTo("redirect:/catalog");
   }
@@ -111,12 +112,11 @@ class AccountControllerTest {
    */
   @Test
   void signoffInvalidatesSessionAndRedirectsToCatalog() {
-    HttpSession session = mock(HttpSession.class);
 
-    String view = accountController.signoff(session);
+    String view = accountController.signoff();
 
     assertThat(view).isEqualTo("redirect:/catalog");
-    verify(session, times(1)).invalidate();
+    verify(sessionStore, times(1)).invalidate();
   }
 
   /**
@@ -161,14 +161,13 @@ class AccountControllerTest {
   void editAccountRedirectsToEditPageNotCatalog() {
     // After saving account, should redirect to /account/edit so the user stays
     // on their profile page (the IT test expects the edit form to reload).
-    HttpSession session = mock(HttpSession.class);
     Account account = new Account();
     account.setUsername("j2ee");
     account.setFavouriteCategoryId("FISH");
     when(accountService.getAccount("j2ee")).thenReturn(account);
     when(catalogService.getProductListByCategory("FISH")).thenReturn(List.of());
 
-    String view = accountController.editAccount(account, session);
+    String view = accountController.editAccount(account);
 
     assertThat(view).isEqualTo("redirect:/account/edit");
   }
@@ -178,14 +177,13 @@ class AccountControllerTest {
    */
   @Test
   void editAccountFormWithSessionReturnsEditAccountViewWithAccount() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     Account account = new Account();
     account.setUsername("j2ee");
     AccountController.AccountSession accountSession = new AccountController.AccountSession(account, List.of(), true);
-    when(session.getAttribute("accountBean")).thenReturn(accountSession);
+    when(sessionStore.get("accountBean")).thenReturn(accountSession);
 
-    String view = accountController.editAccountForm(session, model);
+    String view = accountController.editAccountForm(model);
 
     assertThat(view).isEqualTo("account/EditAccountForm");
     assertThat(model.asMap().get("account")).isSameAs(account);
@@ -198,11 +196,10 @@ class AccountControllerTest {
    */
   @Test
   void editAccountFormWithoutSessionReturnsEditAccountViewWithoutAccount() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
-    when(session.getAttribute("accountBean")).thenReturn(null);
+    when(sessionStore.get("accountBean")).thenReturn(null);
 
-    String view = accountController.editAccountForm(session, model);
+    String view = accountController.editAccountForm(model);
 
     assertThat(view).isEqualTo("account/EditAccountForm");
     assertThat(model.asMap()).doesNotContainKey("account");

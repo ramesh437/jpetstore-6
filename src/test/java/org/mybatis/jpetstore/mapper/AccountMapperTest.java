@@ -83,7 +83,7 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    String password = TestSecrets.get("JPETSTORE_TEST_ACID_PASSWORD");
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

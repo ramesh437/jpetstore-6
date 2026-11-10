@@ -18,12 +18,12 @@ package org.mybatis.jpetstore.web.controllers;
 import java.util.Iterator;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.CartItem;
 import org.mybatis.jpetstore.domain.Item;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.mybatis.jpetstore.web.session.SessionStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -42,6 +42,10 @@ public class CartController {
   /** The error view. */
   private static final String ERROR_VIEW = "common/Error";
 
+  /** The external (Memorystore for Redis) session store. */
+  @Autowired
+  private SessionStore sessionStore;
+
   /** The catalog service. */
   @Autowired
   private CatalogService catalogService;
@@ -49,16 +53,13 @@ public class CartController {
   /**
    * Get cart.
    *
-   * @param session
-   *          the session
-   *
    * @return the cart
    */
-  private Cart getCart(HttpSession session) {
-    Cart cart = (Cart) session.getAttribute("cart");
+  private Cart getCart() {
+    Cart cart = (Cart) sessionStore.get("cart");
     if (cart == null) {
       cart = new Cart();
-      session.setAttribute("cart", cart);
+      sessionStore.set("cart", cart);
     }
     return cart;
   }
@@ -66,16 +67,14 @@ public class CartController {
   /**
    * View cart.
    *
-   * @param session
-   *          the session
    * @param model
    *          the model
    *
    * @return the string
    */
   @GetMapping({ "", "/" })
-  public String viewCart(HttpSession session, Model model) {
-    model.addAttribute("cart", getCart(session));
+  public String viewCart(Model model) {
+    model.addAttribute("cart", getCart());
     return "cart/Cart";
   }
 
@@ -84,8 +83,6 @@ public class CartController {
    *
    * @param workingItemId
    *          the working item id
-   * @param session
-   *          the session
    * @param model
    *          the model
    *
@@ -93,12 +90,12 @@ public class CartController {
    */
   @GetMapping("/addItem")
   public String addItemToCart(@RequestParam(value = "workingItemId", required = false) String workingItemId,
-      HttpSession session, Model model) {
+      Model model) {
     if (workingItemId == null || workingItemId.trim().isEmpty()) {
       model.addAttribute("message", "Invalid item ID: cannot add item to cart.");
       return ERROR_VIEW;
     }
-    Cart cart = getCart(session);
+    Cart cart = getCart();
     if (cart.containsItemId(workingItemId)) {
       cart.incrementQuantityByItemId(workingItemId);
     } else {
@@ -106,6 +103,7 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    sessionStore.set("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -115,8 +113,6 @@ public class CartController {
    *
    * @param workingItemId
    *          the working item id
-   * @param session
-   *          the session
    * @param model
    *          the model
    *
@@ -124,13 +120,14 @@ public class CartController {
    */
   @GetMapping("/removeItem")
   public String removeItemFromCart(@RequestParam(value = "workingItemId", required = false) String workingItemId,
-      HttpSession session, Model model) {
+      Model model) {
     if (workingItemId == null || workingItemId.trim().isEmpty()) {
       model.addAttribute("message", "Invalid item ID: cannot remove item from cart.");
       return ERROR_VIEW;
     }
-    Cart cart = getCart(session);
+    Cart cart = getCart();
     Item item = cart.removeItemById(workingItemId);
+    sessionStore.set("cart", cart);
     if (item == null) {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
@@ -144,16 +141,14 @@ public class CartController {
    *
    * @param request
    *          the request
-   * @param session
-   *          the session
    * @param model
    *          the model
    *
    * @return the string
    */
   @PostMapping("/update")
-  public String updateCartQuantities(HttpServletRequest request, HttpSession session, Model model) {
-    Cart cart = getCart(session);
+  public String updateCartQuantities(HttpServletRequest request, Model model) {
+    Cart cart = getCart();
     Iterator<CartItem> cartItems = cart.getAllCartItems();
     while (cartItems.hasNext()) {
       CartItem cartItem = cartItems.next();
@@ -168,6 +163,7 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    sessionStore.set("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -175,16 +171,14 @@ public class CartController {
   /**
    * Check out.
    *
-   * @param session
-   *          the session
    * @param model
    *          the model
    *
    * @return the string
    */
   @GetMapping("/checkout")
-  public String checkOut(HttpSession session, Model model) {
-    model.addAttribute("cart", getCart(session));
+  public String checkOut(Model model) {
+    model.addAttribute("cart", getCart());
     return "cart/Checkout";
   }
 

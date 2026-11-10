@@ -30,6 +30,12 @@
 
     <context:component-scan base-package="org.mybatis.jpetstore.web.controllers" />
 
+    <!-- Session state is externalized to Memorystore for Redis (configured via REDIS_* environment variables) -->
+    <context:component-scan base-package="org.mybatis.jpetstore.web.session" />
+    <mvc:interceptors>
+        <ref bean="sessionModelInterceptor" />
+    </mvc:interceptors>
+
     <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
         <property name="prefix" value="/WEB-INF/jsp/" />
         <property name="suffix" value=".jsp" />

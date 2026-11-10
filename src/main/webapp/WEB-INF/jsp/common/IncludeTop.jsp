@@ -15,7 +15,7 @@
        limitations under the License.
 
 --%>
-<%@ page contentType="text/html;charset=UTF-8" language="java"%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" session="false"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
 
@@ -48,7 +48,7 @@
                 <a href="${pageContext.request.contextPath}/cart"><img align="middle" name="img_cart" src="${pageContext.request.contextPath}/images/cart.gif" /></a>
                 <img align="middle" src="${pageContext.request.contextPath}/images/separator.gif" />
                 <c:choose>
-                    <c:when test="${sessionScope.accountBean == null || !sessionScope.accountBean.authenticated}">
+                    <c:when test="${accountBean == null || !accountBean.authenticated}">
                         <a href="${pageContext.request.contextPath}/account">Sign In</a>
                     </c:when>
                     <c:otherwise>

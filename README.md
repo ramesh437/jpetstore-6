@@ -33,10 +33,10 @@ Running JPetStore sample under Tomcat (using the [cargo-maven2-plugin](https://c
   $ ./mvnw clean package
   ```
 
-- Startup the Tomcat server and deploy web application
+- Start the self-contained executable JAR (embedded Tomcat; honours the `PORT` and `CONTEXT_PATH` environment variables, defaults `8080` and root context)
 
   ```
-  $ ./mvnw cargo:run -P tomcat9
+  $ java -jar target/jpetstore.jar
   ```
 
   > Note:

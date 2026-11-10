@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mybatis.jpetstore.domain.Account;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -35,6 +36,13 @@ import org.springframework.transaction.annotation.Transactional;
 @ContextConfiguration(classes = MapperTestContext.class)
 @Transactional
 class AccountMapperTest {
+
+  /**
+   * The Spring environment. Credentials are resolved from externalized configuration (environment variables, system
+   * properties or Google Secret Manager via Spring Cloud GCP "sm://" property references) instead of source code.
+   */
+  @Autowired
+  private Environment environment;
 
   /** The mapper. */
   @Autowired
@@ -83,7 +91,9 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Password is externalized (e.g. TEST_ACCOUNT_PASSWORD env var populated from Google Secret Manager);
+    // the embedded HSQLDB seed data uses the username as the default password.
+    String password = environment.getProperty("TEST_ACCOUNT_PASSWORD", username);
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

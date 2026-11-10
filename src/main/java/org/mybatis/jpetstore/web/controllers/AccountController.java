@@ -21,6 +21,9 @@ import java.util.List;
 
 import javax.servlet.http.HttpSession;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
 import org.mybatis.jpetstore.service.AccountService;
@@ -48,11 +51,17 @@ public class AccountController {
   /** The edit account view. */
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
-  /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
-  /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  /** Bounded cache holding the static language and category lists. */
+  private static final LoadingCache<String, List<String>> STATIC_LISTS = CacheBuilder.newBuilder().maximumSize(10)
+      .build(new CacheLoader<String, List<String>>() {
+        @Override
+        public List<String> load(String key) {
+          if ("languages".equals(key)) {
+            return Collections.unmodifiableList(Arrays.asList("english", "japanese"));
+          }
+          return Collections.unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+        }
+      });
 
   /** The account service. */
   @Autowired
@@ -123,8 +132,8 @@ public class AccountController {
    */
   @GetMapping("/new")
   public String newAccountForm(Model model) {
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", STATIC_LISTS.getUnchecked("languages"));
+    model.addAttribute("categories", STATIC_LISTS.getUnchecked("categories"));
     model.addAttribute("account", new Account());
     return NEW_ACCOUNT_VIEW;
   }
@@ -159,8 +168,8 @@ public class AccountController {
     if (accountSession != null) {
       model.addAttribute("account", accountSession.getAccount());
     }
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", STATIC_LISTS.getUnchecked("languages"));
+    model.addAttribute("categories", STATIC_LISTS.getUnchecked("categories"));
     return EDIT_ACCOUNT_VIEW;
   }
 

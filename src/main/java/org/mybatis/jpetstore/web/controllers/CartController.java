@@ -47,6 +47,19 @@ public class CartController {
   private CatalogService catalogService;
 
   /**
+   * Persist the cart back to the externalized (Redis-backed) session. Spring Session only writes attributes that were
+   * set through setAttribute, so in-place mutations must be re-published.
+   *
+   * @param session
+   *          the session
+   * @param cart
+   *          the cart
+   */
+  private void saveCart(HttpSession session, Cart cart) {
+    session.setAttribute("cart", cart);
+  }
+
+  /**
    * Get cart.
    *
    * @param session
@@ -106,6 +119,7 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    saveCart(session, cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -135,6 +149,7 @@ public class CartController {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
     }
+    saveCart(session, cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -168,6 +183,7 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    saveCart(session, cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }

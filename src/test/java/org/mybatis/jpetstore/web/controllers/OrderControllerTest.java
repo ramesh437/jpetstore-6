@@ -38,6 +38,9 @@ import org.springframework.ui.Model;
 
 /**
  * The Class OrderControllerTest.
+ * <p>
+ * HttpSession is mocked here; in deployment the container session is transparently backed by Memorystore for Redis
+ * (Spring Session, see RedisSessionConfig), so session attributes written by the controllers must be Serializable.
  */
 @ExtendWith(MockitoExtension.class)
 class OrderControllerTest {

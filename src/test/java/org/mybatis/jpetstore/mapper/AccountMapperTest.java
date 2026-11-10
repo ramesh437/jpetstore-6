@@ -77,13 +77,33 @@ class AccountMapperTest {
   }
 
   /**
+   * Resolve a secret value from a system property or environment variable (populated from Google Secret Manager).
+   *
+   * @param name
+   *          the secret/property name
+   * @param defaultValue
+   *          the value used when the secret is not provided
+   *
+   * @return the resolved value
+   */
+  private static String resolveSecret(String name, String defaultValue) {
+    String value = System.getProperty(name);
+    if (value == null || value.isEmpty()) {
+      value = System.getenv(name);
+    }
+    return value == null || value.isEmpty() ? defaultValue : value;
+  }
+
+  /**
    * Gets the account by username and password.
    */
   @Test
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is externalized: injected at runtime from Google Secret Manager (exposed as the
+    // JPETSTORE_TEST_ACCOUNT_PASSWORD env var / system property). Falls back to the seeded test user's name.
+    String password = resolveSecret("JPETSTORE_TEST_ACCOUNT_PASSWORD", username);
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

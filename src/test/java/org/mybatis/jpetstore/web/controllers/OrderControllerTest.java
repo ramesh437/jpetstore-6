@@ -38,6 +38,10 @@ import org.springframework.ui.Model;
 
 /**
  * The Class OrderControllerTest.
+ * <p>
+ * Note: in production the {@link javax.servlet.http.HttpSession} is externalized to Memorystore for Redis through
+ * Spring Session (see RedisSessionConfig). These unit tests use a mocked session so they require no Redis instance
+ * and keep no session state in the JVM.
  */
 @ExtendWith(MockitoExtension.class)
 class OrderControllerTest {

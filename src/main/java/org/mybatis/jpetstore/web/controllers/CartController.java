@@ -35,6 +35,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 /**
  * The Class CartController.
  */
+// NOTE: HttpSession is backed by Memorystore for Redis (Spring Session, see RedisSessionConfig); session state is
+// not held in instance memory. Stored values must be Serializable.
 @Controller
 @RequestMapping("/cart")
 public class CartController {

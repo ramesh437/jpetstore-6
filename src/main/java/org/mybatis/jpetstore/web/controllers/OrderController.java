@@ -15,11 +15,11 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.collect.ImmutableList;
 
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Order;
@@ -36,6 +36,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 /**
  * The Class OrderController.
  */
+// NOTE: HttpSession is backed by Memorystore for Redis (Spring Session, see RedisSessionConfig); session state is
+// not held in instance memory. Stored values must be Serializable.
 @Controller
 @RequestMapping("/order")
 public class OrderController {
@@ -54,8 +56,7 @@ public class OrderController {
   private static final String ERROR_VIEW = "common/Error";
 
   /** The card type list. */
-  private static final List<String> CARD_TYPE_LIST = Collections
-      .unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
+  private static final List<String> CARD_TYPE_LIST = ImmutableList.of("Visa", "MasterCard", "American Express");
 
   /** The order service. */
   @Autowired

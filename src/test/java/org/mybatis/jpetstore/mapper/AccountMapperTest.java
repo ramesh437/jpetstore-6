@@ -77,13 +77,29 @@ class AccountMapperTest {
   }
 
   /**
+   * Resolve the test account password from external configuration (system property, then environment variable
+   * populated from Google Secret Manager). The fixture's seed value is only used as a last-resort test default.
+   *
+   * @return the password
+   */
+  private static String resolveTestPassword() {
+    String value = System.getProperty("jpetstore.test.account.password");
+    if (value == null || value.isEmpty()) {
+      value = System.getenv("JPETSTORE_TEST_ACCOUNT_PASSWORD");
+    }
+    return (value == null || value.isEmpty()) ? "ACID" : value;
+  }
+
+  /**
    * Gets the account by username and password.
    */
   @Test
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is resolved at runtime (e.g. injected from Google Secret Manager via Spring Cloud GCP
+    // "sm://" property resolution or environment variable) rather than being hard-coded in source.
+    String password = resolveTestPassword();
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

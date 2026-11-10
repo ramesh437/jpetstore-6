@@ -198,6 +198,7 @@ class AccountControllerTest {
    */
   @Test
   void editAccountFormWithoutSessionReturnsEditAccountViewWithoutAccount() {
+    // HttpSession is backed by Memorystore for Redis (Spring Session) at runtime; mocked here for unit isolation.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);

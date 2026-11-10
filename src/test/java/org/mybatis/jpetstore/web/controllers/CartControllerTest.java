@@ -52,6 +52,7 @@ class CartControllerTest {
    */
   @Test
   void viewCartReturnsCartView() {
+    // HttpSession is backed by Memorystore for Redis (Spring Session) at runtime; mocked here for unit isolation.
     HttpSession session = mock(HttpSession.class);
     Cart cart = new Cart();
     when(session.getAttribute("cart")).thenReturn(cart);
@@ -68,6 +69,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNullIdReturnsError() {
+    // HttpSession is backed by Memorystore for Redis (Spring Session) at runtime; mocked here for unit isolation.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -82,6 +84,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNewIdFetchesItemFromCatalogAndAddsToCart() {
+    // HttpSession is backed by Memorystore for Redis (Spring Session) at runtime; mocked here for unit isolation.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -107,6 +110,7 @@ class CartControllerTest {
    */
   @Test
   void addItemWithExistingIdIncrementsQuantityWithoutCallingCatalog() {
+    // HttpSession is backed by Memorystore for Redis (Spring Session) at runtime; mocked here for unit isolation.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -129,6 +133,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNullIdReturnsError() {
+    // HttpSession is backed by Memorystore for Redis (Spring Session) at runtime; mocked here for unit isolation.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -143,6 +148,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithExistingIdRemovesItemFromCart() {
+    // HttpSession is backed by Memorystore for Redis (Spring Session) at runtime; mocked here for unit isolation.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -165,6 +171,7 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNonExistentIdReturnsError() {
+    // HttpSession is backed by Memorystore for Redis (Spring Session) at runtime; mocked here for unit isolation.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -182,6 +189,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesUpdatesQuantity() {
+    // HttpSession is backed by Memorystore for Redis (Spring Session) at runtime; mocked here for unit isolation.
     HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
@@ -206,6 +214,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesRemovesItemWhenQuantityLessThanOne() {
+    // HttpSession is backed by Memorystore for Redis (Spring Session) at runtime; mocked here for unit isolation.
     HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
@@ -229,6 +238,7 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesIgnoresInvalidNumericInput() {
+    // HttpSession is backed by Memorystore for Redis (Spring Session) at runtime; mocked here for unit isolation.
     HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
@@ -252,6 +262,7 @@ class CartControllerTest {
    */
   @Test
   void checkOutReturnsCheckoutViewWithCartFromSession() {
+    // HttpSession is backed by Memorystore for Redis (Spring Session) at runtime; mocked here for unit isolation.
     HttpSession session = mock(HttpSession.class);
     Cart cart = new Cart();
     when(session.getAttribute("cart")).thenReturn(cart);
@@ -268,6 +279,7 @@ class CartControllerTest {
    */
   @Test
   void checkOutWithNoExistingCartCreatesNewCartInSession() {
+    // HttpSession is backed by Memorystore for Redis (Spring Session) at runtime; mocked here for unit isolation.
     HttpSession session = mock(HttpSession.class);
     when(session.getAttribute("cart")).thenReturn(null);
     Model model = new ExtendedModelMap();

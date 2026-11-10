@@ -26,17 +26,17 @@ Running JPetStore sample under Tomcat (using the [cargo-maven2-plugin](https://c
   $ git clone https://github.com/mybatis/jpetstore-6.git
   ```
 
-- Build war file
+- Build executable jar file (embedded Tomcat, no application server required)
 
   ```
   $ cd jpetstore-6
   $ ./mvnw clean package
   ```
 
-- Startup the Tomcat server and deploy web application
+- Startup the application (listens on `$PORT`, default 8080; context path `$CONTEXT_PATH`, default `/jpetstore`)
 
   ```
-  $ ./mvnw cargo:run -P tomcat9
+  $ java -jar target/jpetstore.jar
   ```
 
   > Note:

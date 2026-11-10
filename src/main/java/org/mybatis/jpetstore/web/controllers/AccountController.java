@@ -18,8 +18,13 @@ package org.mybatis.jpetstore.web.controllers;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
@@ -49,10 +54,21 @@ public class AccountController {
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
   /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
+  private static final String LANGUAGE_KEY = "languages";
   /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  private static final String CATEGORY_KEY = "categories";
+
+  /** Bounded cache (max 2 entries) holding the static reference lists. */
+  private static final LoadingCache<String, List<String>> REFERENCE_LISTS = CacheBuilder.newBuilder().maximumSize(2)
+      .expireAfterAccess(1, TimeUnit.HOURS).build(new CacheLoader<String, List<String>>() {
+        @Override
+        public List<String> load(String key) {
+          if (LANGUAGE_KEY.equals(key)) {
+            return Collections.unmodifiableList(Arrays.asList("english", "japanese"));
+          }
+          return Collections.unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+        }
+      });
 
   /** The account service. */
   @Autowired
@@ -123,8 +139,8 @@ public class AccountController {
    */
   @GetMapping("/new")
   public String newAccountForm(Model model) {
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", REFERENCE_LISTS.getUnchecked(LANGUAGE_KEY));
+    model.addAttribute("categories", REFERENCE_LISTS.getUnchecked(CATEGORY_KEY));
     model.addAttribute("account", new Account());
     return NEW_ACCOUNT_VIEW;
   }
@@ -159,8 +175,8 @@ public class AccountController {
     if (accountSession != null) {
       model.addAttribute("account", accountSession.getAccount());
     }
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", REFERENCE_LISTS.getUnchecked(LANGUAGE_KEY));
+    model.addAttribute("categories", REFERENCE_LISTS.getUnchecked(CATEGORY_KEY));
     return EDIT_ACCOUNT_VIEW;
   }
 
@@ -184,7 +200,8 @@ public class AccountController {
   }
 
   /**
-   * Inner class to hold account session data, compatible with JSP ${sessionScope.accountBean.*} references.
+   * Inner class to hold account session data, compatible with JSP ${sessionScope.accountBean.*} references. Stored in
+   * the externalized HTTP session (Memorystore for Redis), hence Serializable.
    */
   public static class AccountSession implements java.io.Serializable {
     /** The serial version uid. */

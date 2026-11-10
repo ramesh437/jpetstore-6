@@ -20,7 +20,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Item;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 
@@ -52,9 +52,10 @@ class CartControllerTest {
    */
   @Test
   void viewCartReturnsCartView() {
-    HttpSession session = mock(HttpSession.class);
+    // Spring Session (Memorystore for Redis) backs HttpSession in production; MockHttpSession mimics that store
+    MockHttpSession session = new MockHttpSession();
     Cart cart = new Cart();
-    when(session.getAttribute("cart")).thenReturn(cart);
+    session.setAttribute("cart", cart);
     Model model = new ExtendedModelMap();
 
     String view = cartController.viewCart(session, model);
@@ -68,7 +69,8 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNullIdReturnsError() {
-    HttpSession session = mock(HttpSession.class);
+    // Spring Session (Memorystore for Redis) backs HttpSession in production; MockHttpSession mimics that store
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
 
     String view = cartController.addItemToCart(null, session, model);
@@ -82,11 +84,12 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNewIdFetchesItemFromCatalogAndAddsToCart() {
-    HttpSession session = mock(HttpSession.class);
+    // Spring Session (Memorystore for Redis) backs HttpSession in production; MockHttpSession mimics that store
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
-    when(session.getAttribute("cart")).thenReturn(cart);
+    session.setAttribute("cart", cart);
 
     Item item = new Item();
     item.setItemId("EST-1");
@@ -107,7 +110,8 @@ class CartControllerTest {
    */
   @Test
   void addItemWithExistingIdIncrementsQuantityWithoutCallingCatalog() {
-    HttpSession session = mock(HttpSession.class);
+    // Spring Session (Memorystore for Redis) backs HttpSession in production; MockHttpSession mimics that store
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
@@ -115,7 +119,7 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    session.setAttribute("cart", cart);
 
     String view = cartController.addItemToCart("EST-1", session, model);
 
@@ -129,7 +133,8 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNullIdReturnsError() {
-    HttpSession session = mock(HttpSession.class);
+    // Spring Session (Memorystore for Redis) backs HttpSession in production; MockHttpSession mimics that store
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
 
     String view = cartController.removeItemFromCart(null, session, model);
@@ -143,7 +148,8 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithExistingIdRemovesItemFromCart() {
-    HttpSession session = mock(HttpSession.class);
+    // Spring Session (Memorystore for Redis) backs HttpSession in production; MockHttpSession mimics that store
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
@@ -151,7 +157,7 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    session.setAttribute("cart", cart);
 
     String view = cartController.removeItemFromCart("EST-1", session, model);
 
@@ -165,11 +171,12 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNonExistentIdReturnsError() {
-    HttpSession session = mock(HttpSession.class);
+    // Spring Session (Memorystore for Redis) backs HttpSession in production; MockHttpSession mimics that store
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
-    when(session.getAttribute("cart")).thenReturn(cart);
+    session.setAttribute("cart", cart);
 
     String view = cartController.removeItemFromCart("NOT-THERE", session, model);
 
@@ -182,7 +189,8 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesUpdatesQuantity() {
-    HttpSession session = mock(HttpSession.class);
+    // Spring Session (Memorystore for Redis) backs HttpSession in production; MockHttpSession mimics that store
+    MockHttpSession session = new MockHttpSession();
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -191,7 +199,7 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    session.setAttribute("cart", cart);
     when(request.getParameter("EST-1")).thenReturn("3");
 
     String view = cartController.updateCartQuantities(request, session, model);
@@ -206,7 +214,8 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesRemovesItemWhenQuantityLessThanOne() {
-    HttpSession session = mock(HttpSession.class);
+    // Spring Session (Memorystore for Redis) backs HttpSession in production; MockHttpSession mimics that store
+    MockHttpSession session = new MockHttpSession();
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -215,7 +224,7 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    session.setAttribute("cart", cart);
     when(request.getParameter("EST-1")).thenReturn("0");
 
     String view = cartController.updateCartQuantities(request, session, model);
@@ -229,7 +238,8 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesIgnoresInvalidNumericInput() {
-    HttpSession session = mock(HttpSession.class);
+    // Spring Session (Memorystore for Redis) backs HttpSession in production; MockHttpSession mimics that store
+    MockHttpSession session = new MockHttpSession();
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -238,7 +248,7 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    session.setAttribute("cart", cart);
     when(request.getParameter("EST-1")).thenReturn("not-a-number");
 
     String view = cartController.updateCartQuantities(request, session, model);
@@ -252,9 +262,10 @@ class CartControllerTest {
    */
   @Test
   void checkOutReturnsCheckoutViewWithCartFromSession() {
-    HttpSession session = mock(HttpSession.class);
+    // Spring Session (Memorystore for Redis) backs HttpSession in production; MockHttpSession mimics that store
+    MockHttpSession session = new MockHttpSession();
     Cart cart = new Cart();
-    when(session.getAttribute("cart")).thenReturn(cart);
+    session.setAttribute("cart", cart);
     Model model = new ExtendedModelMap();
 
     String view = cartController.checkOut(session, model);
@@ -268,15 +279,14 @@ class CartControllerTest {
    */
   @Test
   void checkOutWithNoExistingCartCreatesNewCartInSession() {
-    HttpSession session = mock(HttpSession.class);
-    when(session.getAttribute("cart")).thenReturn(null);
+    // Spring Session (Memorystore for Redis) backs HttpSession in production; MockHttpSession mimics that store
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
 
     String view = cartController.checkOut(session, model);
 
     assertThat(view).isEqualTo("cart/Checkout");
     assertThat(model.asMap().get("cart")).isInstanceOf(Cart.class);
-    org.mockito.Mockito.verify(session).setAttribute(org.mockito.ArgumentMatchers.eq("cart"),
-        org.mockito.ArgumentMatchers.any(Cart.class));
+    assertThat(session.getAttribute("cart")).isInstanceOf(Cart.class);
   }
 }

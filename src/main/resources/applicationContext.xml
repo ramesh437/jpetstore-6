@@ -28,6 +28,29 @@
      http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
      http://mybatis.org/schema/mybatis-spring http://mybatis.org/schema/mybatis-spring.xsd">
 
+    <!-- Resolve ${...} placeholders from environment variables / system properties -->
+    <context:property-placeholder ignore-unresolvable="true" />
+
+    <!--
+      Externalized HTTP session state in Google Cloud Memorystore for Redis (Spring Session).
+      Configure with env vars: REDIS_HOST, REDIS_PORT, REDIS_PASSWORD (AUTH string),
+      REDIS_SSL (true for in-transit encryption), SESSION_TIMEOUT_SECONDS, SESSION_REDIS_NAMESPACE.
+    -->
+    <bean id="redisConnectionFactory" class="org.mybatis.jpetstore.web.configuration.RedisSessionSupport"
+          factory-method="connectionFactory">
+        <constructor-arg value="${REDIS_HOST:localhost}" />
+        <constructor-arg value="${REDIS_PORT:6379}" />
+        <constructor-arg value="${REDIS_PASSWORD:}" />
+        <constructor-arg value="${REDIS_SSL:false}" />
+    </bean>
+    <!-- Memorystore disables the CONFIG command, so do not try to configure keyspace notifications -->
+    <bean id="configureRedisAction" class="org.mybatis.jpetstore.web.configuration.RedisSessionSupport"
+          factory-method="noOpConfigureRedisAction" />
+    <bean class="org.springframework.session.data.redis.config.annotation.web.http.RedisHttpSessionConfiguration">
+        <property name="maxInactiveIntervalInSeconds" value="${SESSION_TIMEOUT_SECONDS:1800}" />
+        <property name="redisNamespace" value="${SESSION_REDIS_NAMESPACE:jpetstore:session}" />
+    </bean>
+
     <jdbc:embedded-database id="dataSource">
         <jdbc:script location="classpath:database/jpetstore-hsqldb-schema.sql"/>
         <jdbc:script location="classpath:database/jpetstore-hsqldb-dataload.sql"/>

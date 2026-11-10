@@ -17,6 +17,9 @@ package org.mybatis.jpetstore.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
+
+import java.io.IOException;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -83,7 +86,7 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    String password = resolveSecret("JPETSTORE_TEST_ACID_PASSWORD", "jpetstore.test.acid-password", username);
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);
@@ -107,6 +110,35 @@ class AccountMapperTest {
     assertThat(account.isBannerOption()).isTrue();
     assertThat(account.getBannerName()).isEqualTo("<image src=\"/jpetstore/images/banner_cats.gif\">");
 
+  }
+
+  /**
+   * Resolves a credential from Google Secret Manager instead of hard-coding it in source. Resolution order: (1) the
+   * secret identified by the <code>JPETSTORE_TEST_ACID_PASSWORD_SECRET</code> environment variable (format
+   * <code>projects/{project}/secrets/{name}/versions/{version}</code>) is read from Google Secret Manager; (2) a value
+   * injected as an environment variable or system property (e.g. Secret Manager mounted/injected by the platform);
+   * (3) when no secret is supplied (e.g. local runs against the embedded HSQLDB fixture), the fixture's convention
+   * where the seeded password equals the user name.
+   *
+   * @param envName
+   *          the environment variable name
+   * @param propertyName
+   *          the system property name
+   * @param fixtureDefault
+   *          the value used when no secret is configured
+   * @return the resolved secret value
+   */
+  private static String resolveSecret(String envName, String propertyName, String fixtureDefault) {
+    String secretVersion = System.getenv(envName + "_SECRET");
+    if (secretVersion != null && !secretVersion.isEmpty()) {
+      try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
+        return client.accessSecretVersion(secretVersion).getPayload().getData().toStringUtf8();
+      } catch (IOException e) {
+        throw new IllegalStateException("Unable to read secret from Google Secret Manager: " + secretVersion, e);
+      }
+    }
+    String value = System.getenv(envName);
+    return value != null && !value.isEmpty() ? value : System.getProperty(propertyName, fixtureDefault);
   }
 
   /**

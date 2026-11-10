@@ -33,6 +33,29 @@
         <jdbc:script location="classpath:database/jpetstore-hsqldb-dataload.sql"/>
     </jdbc:embedded-database>
 
+    <!-- Resolve ${...} placeholders from environment variables / system properties -->
+    <context:property-placeholder system-properties-mode="OVERRIDE" ignore-unresolvable="true" />
+
+    <!-- HTTP session state is externalised to Memorystore for Redis (Spring Session), keeping the app stateless.
+         Configure via env vars: REDIS_HOST, REDIS_PORT, REDIS_PASSWORD (e.g. from Secret Manager),
+         SESSION_TIMEOUT_SECONDS, SESSION_REDIS_NAMESPACE. -->
+    <bean id="redisStandaloneConfiguration" class="org.springframework.data.redis.connection.RedisStandaloneConfiguration">
+        <constructor-arg name="hostName" value="${REDIS_HOST:localhost}" />
+        <constructor-arg name="port" value="${REDIS_PORT:6379}" />
+        <property name="password" value="#{T(org.springframework.data.redis.connection.RedisPassword).of('${REDIS_PASSWORD:}')}" />
+    </bean>
+    <bean id="redisConnectionFactory" class="org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory">
+        <constructor-arg ref="redisStandaloneConfiguration" />
+    </bean>
+    <!-- Memorystore for Redis does not permit the CONFIG command; disable Spring Session's keyspace-notification auto-config -->
+    <bean id="configureRedisAction" class="org.springframework.beans.factory.config.FieldRetrievingFactoryBean">
+        <property name="staticField" value="org.springframework.session.data.redis.config.ConfigureRedisAction.NO_OP" />
+    </bean>
+    <bean class="org.springframework.session.data.redis.config.annotation.web.http.RedisHttpSessionConfiguration">
+        <property name="maxInactiveIntervalInSeconds" value="${SESSION_TIMEOUT_SECONDS:1800}" />
+        <property name="redisNamespace" value="${SESSION_REDIS_NAMESPACE:jpetstore:session}" />
+    </bean>
+
     <!-- transaction manager, use DataSourceTransactionManager" for JDBC local tx -->
     <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
         <property name="dataSource" ref="dataSource" />

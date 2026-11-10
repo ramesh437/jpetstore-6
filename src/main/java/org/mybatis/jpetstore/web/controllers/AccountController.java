@@ -18,9 +18,13 @@ package org.mybatis.jpetstore.web.controllers;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpSession;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
 import org.mybatis.jpetstore.service.AccountService;
@@ -48,11 +52,22 @@ public class AccountController {
   /** The edit account view. */
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
-  /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
-  /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  /** The language list (bounded Guava cache, max 10 entries, with expiry). */
+  private static final LoadingCache<String, List<String>> LANGUAGE_LIST = CacheBuilder.newBuilder().maximumSize(10)
+      .expireAfterAccess(1, TimeUnit.HOURS).build(new CacheLoader<String, List<String>>() {
+        @Override
+        public List<String> load(String key) {
+          return Collections.unmodifiableList(Arrays.asList("english", "japanese"));
+        }
+      });
+  /** The category list (bounded Guava cache, max 10 entries, with expiry). */
+  private static final LoadingCache<String, List<String>> CATEGORY_LIST = CacheBuilder.newBuilder().maximumSize(10)
+      .expireAfterAccess(1, TimeUnit.HOURS).build(new CacheLoader<String, List<String>>() {
+        @Override
+        public List<String> load(String key) {
+          return Collections.unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+        }
+      });
 
   /** The account service. */
   @Autowired
@@ -123,8 +138,8 @@ public class AccountController {
    */
   @GetMapping("/new")
   public String newAccountForm(Model model) {
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", LANGUAGE_LIST.getUnchecked("default"));
+    model.addAttribute("categories", CATEGORY_LIST.getUnchecked("default"));
     model.addAttribute("account", new Account());
     return NEW_ACCOUNT_VIEW;
   }
@@ -159,8 +174,8 @@ public class AccountController {
     if (accountSession != null) {
       model.addAttribute("account", accountSession.getAccount());
     }
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", LANGUAGE_LIST.getUnchecked("default"));
+    model.addAttribute("categories", CATEGORY_LIST.getUnchecked("default"));
     return EDIT_ACCOUNT_VIEW;
   }
 

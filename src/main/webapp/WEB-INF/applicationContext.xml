@@ -41,6 +41,9 @@
     <!-- enable component scanning and autowire (beware that this does not enable mapper scanning!) -->
     <context:component-scan base-package="org.mybatis.jpetstore.service" />
 
+    <!-- externalize HTTP session state to Memorystore for Redis (Spring Session) -->
+    <bean class="org.mybatis.jpetstore.web.configuration.RedisSessionConfiguration" />
+
     <!-- enable transaction demarcation with annotations -->
     <tx:annotation-driven />
 

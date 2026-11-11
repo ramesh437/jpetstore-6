@@ -100,6 +100,8 @@ class CartControllerTest {
     assertThat(cart.containsItemId("EST-1")).isTrue();
     assertThat(cart.getCartItemList().get(0).getQuantity()).isEqualTo(1);
     assertThat(model.asMap().get("cart")).isSameAs(cart);
+    // cart must be written back so it is persisted to the external (Redis) session store
+    org.mockito.Mockito.verify(session).setAttribute("cart", cart);
   }
 
   /**
@@ -158,6 +160,7 @@ class CartControllerTest {
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.containsItemId("EST-1")).isFalse();
     assertThat(model.asMap().get("cart")).isSameAs(cart);
+    org.mockito.Mockito.verify(session).setAttribute("cart", cart);
   }
 
   /**

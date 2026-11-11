@@ -83,7 +83,13 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is externalized: resolved at runtime from a secret injected by Google Secret Manager
+    // (exposed as the TEST_ACCOUNT_PASSWORD env var / test.account.password system property).
+    String password = System.getProperty("test.account.password", System.getenv("TEST_ACCOUNT_PASSWORD"));
+    if (password == null || password.isEmpty()) {
+      // Fall back to the value stored in the test dataset instead of embedding it in source code
+      password = jdbcTemplate.queryForObject("SELECT PASSWORD FROM SIGNON WHERE USERNAME = ?", String.class, username);
+    }
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

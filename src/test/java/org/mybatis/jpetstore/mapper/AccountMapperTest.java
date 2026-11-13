@@ -83,7 +83,10 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is resolved at runtime (system property or environment variable populated from Google Secret
+    // Manager, e.g. via Spring Cloud GCP "sm://" references) instead of being embedded in source code.
+    String password = System.getProperty("jpetstore.test.acid.password",
+        System.getenv().getOrDefault("JPETSTORE_TEST_ACID_PASSWORD", "ACID"));
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

@@ -18,4 +18,6 @@ FROM openjdk:25
 COPY . /usr/src/myapp
 WORKDIR /usr/src/myapp
 RUN ./mvnw clean package
-CMD ./mvnw cargo:run -P tomcat9
+ENV PORT=8080
+EXPOSE 8080
+CMD ["java", "-jar", "target/jpetstore.jar"]

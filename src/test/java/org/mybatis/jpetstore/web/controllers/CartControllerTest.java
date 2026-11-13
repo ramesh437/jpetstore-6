@@ -35,6 +35,11 @@ import org.springframework.ui.Model;
 
 /**
  * The Class CartControllerTest.
+ *
+ * <p>
+ * {@code HttpSession} is mocked here; at runtime it is backed by Spring Session and stored in Google Cloud Memorystore
+ * for Redis (see {@code RedisSessionConfig}), so session state is externalized and the application stays stateless.
+ * Session-stored objects must remain {@link java.io.Serializable}.
  */
 @ExtendWith(MockitoExtension.class)
 class CartControllerTest {

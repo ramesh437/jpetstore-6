@@ -35,6 +35,10 @@ import org.springframework.ui.Model;
 
 /**
  * The Class CartControllerTest.
+ * <p>
+ * The controllers use the standard {@link javax.servlet.http.HttpSession} API, which in the deployed application is
+ * transparently backed by Google Cloud Memorystore for Redis (Spring Session). The session is mocked here so no Redis
+ * instance is needed for unit tests.
  */
 @ExtendWith(MockitoExtension.class)
 class CartControllerTest {

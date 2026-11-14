@@ -26,7 +26,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * The Class MavenWrapperDownloader.
@@ -39,12 +40,39 @@ public final class MavenWrapperDownloader {
     /** The verbose. */
     private static final boolean VERBOSE = Boolean.parseBoolean(System.getenv("MVNW_VERBOSE"));
 
+    /** Connect timeout in ms (override with MVNW_CONNECT_TIMEOUT_MS). */
+    private static final int CONNECT_TIMEOUT_MS = parseTimeout("MVNW_CONNECT_TIMEOUT_MS", 10000);
+
+    /** Read timeout in ms (override with MVNW_READ_TIMEOUT_MS). */
+    private static final int READ_TIMEOUT_MS = parseTimeout("MVNW_READ_TIMEOUT_MS", 30000);
+
+    /** Tracks the in-progress temp file so it can be cleaned up on SIGTERM/SIGINT. */
+    private static final AtomicReference<Path> IN_PROGRESS_TEMP = new AtomicReference<>();
+
+    /**
+     * Registers a shutdown hook that releases resources (temp file) when the
+     * process receives SIGTERM/SIGINT or exits.
+     */
+    private static void registerShutdownHook() {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            final Path temp = IN_PROGRESS_TEMP.getAndSet(null);
+            if (temp != null) {
+                try {
+                    Files.deleteIfExists(temp);
+                } catch (IOException e) {
+                    // best effort cleanup during shutdown
+                }
+            }
+        }, "mvnw-downloader-shutdown-hook"));
+    }
+
     /**
      * Main.
      *
      * @param args the args
      */
     public static void main(String[] args) {
+        registerShutdownHook();
         log("Apache Maven Wrapper Downloader " + WRAPPER_VERSION);
 
         if (args.length != 2) {
@@ -94,14 +122,35 @@ public final class MavenWrapperDownloader {
         Path temp = wrapperJarPath
                 .getParent()
                 .resolve(wrapperJarPath.getFileName() + "."
-                        + Long.toUnsignedString(ThreadLocalRandom.current().nextLong()) + ".tmp");
-        try (InputStream inStream = wrapperUrl.openStream()) {
+                        + UUID.randomUUID() + ".tmp");
+        IN_PROGRESS_TEMP.set(temp);
+        final java.net.URLConnection connection = wrapperUrl.openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
+        try (InputStream inStream = connection.getInputStream()) {
             Files.copy(inStream, temp, StandardCopyOption.REPLACE_EXISTING);
             Files.move(temp, wrapperJarPath, StandardCopyOption.REPLACE_EXISTING);
         } finally {
             Files.deleteIfExists(temp);
+            IN_PROGRESS_TEMP.compareAndSet(temp, null);
         }
         log(" - Downloader complete");
+    }
+
+    /**
+     * Parse timeout from environment variable.
+     *
+     * @param name the env variable name
+     * @param defaultValue the default value in ms
+     * @return the timeout in ms
+     */
+    private static int parseTimeout(String name, int defaultValue) {
+        try {
+            final String value = System.getenv(name);
+            return value == null ? defaultValue : Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 
     /**

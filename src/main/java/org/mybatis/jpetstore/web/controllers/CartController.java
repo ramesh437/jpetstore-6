@@ -34,6 +34,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * The Class CartController.
+ * <p>
+ * Session state (the cart) is stored in the externalized HTTP session backed by Google Cloud Memorystore for Redis
+ * (Spring Session). Mutated session objects must be re-set on the session so changes are persisted.
  */
 @Controller
 @RequestMapping("/cart")
@@ -106,6 +109,8 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    // Write back so the change is persisted to the externalized (Redis) session store
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -135,6 +140,8 @@ public class CartController {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
     }
+    // Write back so the change is persisted to the externalized (Redis) session store
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -168,6 +175,8 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    // Write back so the change is persisted to the externalized (Redis) session store
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }

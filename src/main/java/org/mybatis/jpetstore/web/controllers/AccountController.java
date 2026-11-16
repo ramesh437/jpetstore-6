@@ -15,11 +15,11 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.collect.ImmutableList;
 
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
@@ -36,6 +36,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * The Class AccountController.
+ * <p>
+ * Session state (account, cart, order) is held in the {@link HttpSession}, which is transparently backed by Google
+ * Cloud Memorystore for Redis through Spring Session (see RedisHttpSessionConfig), keeping this controller stateless.
  */
 @Controller
 @RequestMapping("/account")
@@ -49,10 +52,9 @@ public class AccountController {
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
   /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
+  private static final List<String> LANGUAGE_LIST = ImmutableList.of("english", "japanese");
   /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  private static final List<String> CATEGORY_LIST = ImmutableList.of("FISH", "DOGS", "REPTILES", "CATS", "BIRDS");
 
   /** The account service. */
   @Autowired

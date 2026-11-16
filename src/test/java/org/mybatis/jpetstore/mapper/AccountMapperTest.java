@@ -83,7 +83,14 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is resolved at runtime (injected from Google Secret Manager into the environment / system property
+    // JPETSTORE_TEST_ACCOUNT_PASSWORD) instead of being embedded in source code.
+    String password = System.getProperty("jpetstore.test.account.password",
+        System.getenv("JPETSTORE_TEST_ACCOUNT_PASSWORD"));
+    if (password == null) {
+      throw new IllegalStateException(
+          "Test account password not provided. Set JPETSTORE_TEST_ACCOUNT_PASSWORD (e.g. from Google Secret Manager).");
+    }
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

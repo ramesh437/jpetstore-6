@@ -34,6 +34,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * The Class CartController.
+ * <p>
+ * Session state (account, cart, order) is held in the {@link HttpSession}, which is transparently backed by Google
+ * Cloud Memorystore for Redis through Spring Session (see RedisHttpSessionConfig), keeping this controller stateless.
  */
 @Controller
 @RequestMapping("/cart")

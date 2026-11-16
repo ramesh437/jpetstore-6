@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+// HttpSession is backed by Memorystore for Redis (Spring Session) at runtime; mocked here for unit tests.
 import javax.servlet.http.HttpSession;
 
 import org.junit.jupiter.api.Test;
@@ -55,6 +56,7 @@ class OrderControllerTest {
    */
   @Test
   void listOrdersWithoutAuthReturnsError() {
+    // Test double for the Redis-backed (Memorystore) Spring Session HttpSession; no server-local session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
@@ -70,6 +72,7 @@ class OrderControllerTest {
    */
   @Test
   void newOrderFormWithoutAuthRedirects() {
+    // Test double for the Redis-backed (Memorystore) Spring Session HttpSession; no server-local session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
@@ -85,6 +88,7 @@ class OrderControllerTest {
    */
   @Test
   void newOrderFormWithAuthAndCartReturnsNewOrderView() {
+    // Test double for the Redis-backed (Memorystore) Spring Session HttpSession; no server-local session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -120,6 +124,7 @@ class OrderControllerTest {
    */
   @Test
   void listOrdersWithAuthReturnsOrderList() {
+    // Test double for the Redis-backed (Memorystore) Spring Session HttpSession; no server-local session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
@@ -143,6 +148,7 @@ class OrderControllerTest {
     // The @ModelAttribute Order is therefore all-null. The controller must use
     // the session order (which has the full billing address) and must NOT
     // overwrite it with the null-filled model attribute.
+    // Test double for the Redis-backed (Memorystore) Spring Session HttpSession; no server-local session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -185,6 +191,7 @@ class OrderControllerTest {
     // The controller must NOT overwrite the billing address stored in the session
     // with these null values, or the subsequent insertOrder will fail with a
     // NOT NULL constraint violation on BILLADDR1.
+    // Test double for the Redis-backed (Memorystore) Spring Session HttpSession; no server-local session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -233,6 +240,7 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithoutAuthRedirects() {
+    // Test double for the Redis-backed (Memorystore) Spring Session HttpSession; no server-local session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
@@ -247,6 +255,7 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithAuthAndMatchingUsernameReturnsViewOrder() {
+    // Test double for the Redis-backed (Memorystore) Spring Session HttpSession; no server-local session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
@@ -269,6 +278,7 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithAuthButDifferentUsernameReturnsError() {
+    // Test double for the Redis-backed (Memorystore) Spring Session HttpSession; no server-local session state.
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();

@@ -83,7 +83,9 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is resolved at runtime (injected from Google Secret Manager via Spring Cloud GCP / environment);
+    // falls back to the seeded test-database value, which equals the username.
+    String password = resolveTestPassword(username);
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);
@@ -272,6 +274,15 @@ class AccountMapperTest {
 
     assertThat(recordMap).hasSize(2).containsEntry("USERNAME", account.getUsername()).containsEntry("PASSWORD",
         account.getPassword());
+  }
+
+
+  private static String resolveTestPassword(String username) {
+    String value = System.getProperty("test.account.password");
+    if (value == null || value.isEmpty()) {
+      value = System.getenv("TEST_ACCOUNT_PASSWORD");
+    }
+    return value == null || value.isEmpty() ? username : value;
   }
 
 }

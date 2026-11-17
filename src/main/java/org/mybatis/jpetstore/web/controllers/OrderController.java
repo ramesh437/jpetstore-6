@@ -15,15 +15,14 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
-import javax.servlet.http.HttpSession;
+import com.google.common.collect.ImmutableList;
 
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Order;
 import org.mybatis.jpetstore.service.OrderService;
+import org.mybatis.jpetstore.session.SessionStateStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -54,25 +53,26 @@ public class OrderController {
   private static final String ERROR_VIEW = "common/Error";
 
   /** The card type list. */
-  private static final List<String> CARD_TYPE_LIST = Collections
-      .unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
+  private static final List<String> CARD_TYPE_LIST = ImmutableList.of("Visa", "MasterCard", "American Express");
 
   /** The order service. */
   @Autowired
   private OrderService orderService;
 
+  /** The externalized (Memorystore for Redis) session state store. */
+  @Autowired
+  private SessionStateStore session;
+
   /**
    * List orders.
    *
-   * @param session
-   *          the session
    * @param model
    *          the model
    *
    * @return the string
    */
   @GetMapping("/list")
-  public String listOrders(HttpSession session, Model model) {
+  public String listOrders(Model model) {
     AccountController.AccountSession accountSession = (AccountController.AccountSession) session
         .getAttribute("accountBean");
     if (accountSession == null || !accountSession.isAuthenticated()) {
@@ -88,15 +88,13 @@ public class OrderController {
   /**
    * New order form.
    *
-   * @param session
-   *          the session
    * @param model
    *          the model
    *
    * @return the string
    */
   @GetMapping("/new")
-  public String newOrderForm(HttpSession session, Model model) {
+  public String newOrderForm(Model model) {
     AccountController.AccountSession accountSession = (AccountController.AccountSession) session
         .getAttribute("accountBean");
     Cart cart = (Cart) session.getAttribute("cart");
@@ -127,8 +125,6 @@ public class OrderController {
    *          the shipping address required
    * @param confirmed
    *          the confirmed
-   * @param session
-   *          the session
    * @param model
    *          the model
    *
@@ -137,7 +133,7 @@ public class OrderController {
   @PostMapping("/new")
   public String newOrder(@ModelAttribute Order order,
       @RequestParam(value = "shippingAddressRequired", defaultValue = "false") boolean shippingAddressRequired,
-      @RequestParam(value = "confirmed", defaultValue = "false") boolean confirmed, HttpSession session, Model model) {
+      @RequestParam(value = "confirmed", defaultValue = "false") boolean confirmed, Model model) {
 
     Order sessionOrder = (Order) session.getAttribute("order");
 
@@ -211,15 +207,13 @@ public class OrderController {
    *
    * @param orderId
    *          the order id
-   * @param session
-   *          the session
    * @param model
    *          the model
    *
    * @return the string
    */
   @GetMapping("/view")
-  public String viewOrder(@RequestParam("orderId") int orderId, HttpSession session, Model model) {
+  public String viewOrder(@RequestParam("orderId") int orderId, Model model) {
     AccountController.AccountSession accountSession = (AccountController.AccountSession) session
         .getAttribute("accountBean");
     if (accountSession == null || !accountSession.isAuthenticated()) {

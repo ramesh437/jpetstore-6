@@ -19,9 +19,9 @@
 
 <div id="Welcome">
     <div id="WelcomeContent">
-        <c:if test="${sessionScope.accountBean != null }">
-            <c:if test="${sessionScope.accountBean.authenticated}">
-                Welcome ${sessionScope.accountBean.account.firstName}!
+        <c:if test="${accountBean != null }">
+            <c:if test="${accountBean.authenticated}">
+                Welcome ${accountBean.account.firstName}!
             </c:if>
         </c:if>
     </div>

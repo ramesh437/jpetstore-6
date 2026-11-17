@@ -28,6 +28,11 @@
     <mvc:annotation-driven />
     <mvc:default-servlet-handler />
 
+    <!-- exposes externally stored account state to the JSP views -->
+    <mvc:interceptors>
+        <bean class="org.mybatis.jpetstore.session.SessionModelInterceptor" />
+    </mvc:interceptors>
+
     <context:component-scan base-package="org.mybatis.jpetstore.web.controllers" />
 
     <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">

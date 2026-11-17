@@ -17,14 +17,11 @@ package org.mybatis.jpetstore.web.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-
-import javax.servlet.http.HttpSession;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +30,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.service.OrderService;
+import org.mybatis.jpetstore.session.SessionStateStore;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 
@@ -46,6 +44,10 @@ class OrderControllerTest {
   @Mock
   private OrderService orderService;
 
+  /** The session state store. */
+  @Mock
+  private SessionStateStore session;
+
   /** The order controller. */
   @InjectMocks
   private OrderController orderController;
@@ -55,11 +57,10 @@ class OrderControllerTest {
    */
   @Test
   void listOrdersWithoutAuthReturnsError() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
 
-    String view = orderController.listOrders(session, model);
+    String view = orderController.listOrders(model);
 
     assertThat(view).isEqualTo("common/Error");
     assertThat(model.asMap()).containsKey("message");
@@ -70,12 +71,11 @@ class OrderControllerTest {
    */
   @Test
   void newOrderFormWithoutAuthRedirects() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
     when(session.getAttribute("cart")).thenReturn(new Cart());
 
-    String view = orderController.newOrderForm(session, model);
+    String view = orderController.newOrderForm(model);
 
     assertThat(view).isEqualTo("redirect:/account");
   }
@@ -85,7 +85,6 @@ class OrderControllerTest {
    */
   @Test
   void newOrderFormWithAuthAndCartReturnsNewOrderView() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
@@ -104,7 +103,7 @@ class OrderControllerTest {
     Cart cart = new Cart();
     when(session.getAttribute("cart")).thenReturn(cart);
 
-    String view = orderController.newOrderForm(session, model);
+    String view = orderController.newOrderForm(model);
 
     assertThat(view).isEqualTo("order/NewOrderForm");
     assertThat(model.asMap().get("order")).isInstanceOf(org.mybatis.jpetstore.domain.Order.class);
@@ -120,7 +119,6 @@ class OrderControllerTest {
    */
   @Test
   void listOrdersWithAuthReturnsOrderList() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
     account.setUsername("j2ee");
@@ -128,7 +126,7 @@ class OrderControllerTest {
     when(session.getAttribute("accountBean")).thenReturn(accountSession);
     when(orderService.getOrdersByUsername("j2ee")).thenReturn(List.of());
 
-    String view = orderController.listOrders(session, model);
+    String view = orderController.listOrders(model);
 
     assertThat(view).isEqualTo("order/ListOrders");
     assertThat(model.asMap()).containsKey("orderList");
@@ -143,7 +141,6 @@ class OrderControllerTest {
     // The @ModelAttribute Order is therefore all-null. The controller must use
     // the session order (which has the full billing address) and must NOT
     // overwrite it with the null-filled model attribute.
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
     org.mybatis.jpetstore.domain.Order sessionOrder = new org.mybatis.jpetstore.domain.Order();
@@ -162,7 +159,7 @@ class OrderControllerTest {
 
     // Simulate ConfirmOrder POST: empty @ModelAttribute (all fields null), confirmed=true
     org.mybatis.jpetstore.domain.Order emptyOrder = new org.mybatis.jpetstore.domain.Order();
-    String view = orderController.newOrder(emptyOrder, false, true, session, model);
+    String view = orderController.newOrder(emptyOrder, false, true, model);
 
     assertThat(view).isEqualTo("order/ViewOrder");
     assertThat(model.asMap()).containsEntry("message", "Thank you, your order has been submitted.");
@@ -185,7 +182,6 @@ class OrderControllerTest {
     // The controller must NOT overwrite the billing address stored in the session
     // with these null values, or the subsequent insertOrder will fail with a
     // NOT NULL constraint violation on BILLADDR1.
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
     org.mybatis.jpetstore.domain.Order sessionOrder = new org.mybatis.jpetstore.domain.Order();
@@ -214,7 +210,7 @@ class OrderControllerTest {
     shippingFormOrder.setShipCountry("USA");
     // billing/payment fields left null (not submitted by ShippingForm)
 
-    String view = orderController.newOrder(shippingFormOrder, false, false, session, model);
+    String view = orderController.newOrder(shippingFormOrder, false, false, model);
 
     assertThat(view).isEqualTo("order/ConfirmOrder");
 
@@ -233,11 +229,10 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithoutAuthRedirects() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
 
-    String view = orderController.viewOrder(1, session, model);
+    String view = orderController.viewOrder(1, model);
 
     assertThat(view).isEqualTo("redirect:/account");
   }
@@ -247,7 +242,6 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithAuthAndMatchingUsernameReturnsViewOrder() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
     account.setUsername("j2ee");
@@ -258,7 +252,7 @@ class OrderControllerTest {
     order.setUsername("j2ee");
     when(orderService.getOrder(1)).thenReturn(order);
 
-    String view = orderController.viewOrder(1, session, model);
+    String view = orderController.viewOrder(1, model);
 
     assertThat(view).isEqualTo("order/ViewOrder");
     assertThat(model.asMap()).containsEntry("order", order);
@@ -269,7 +263,6 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithAuthButDifferentUsernameReturnsError() {
-    HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
     account.setUsername("j2ee");
@@ -280,7 +273,7 @@ class OrderControllerTest {
     order.setUsername("someoneelse");
     when(orderService.getOrder(1)).thenReturn(order);
 
-    String view = orderController.viewOrder(1, session, model);
+    String view = orderController.viewOrder(1, model);
 
     assertThat(view).isEqualTo("common/Error");
     assertThat(model.asMap()).containsEntry("message", "You may only view your own orders.");

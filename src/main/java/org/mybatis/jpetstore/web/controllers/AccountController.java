@@ -15,16 +15,15 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
-import javax.servlet.http.HttpSession;
+import com.google.common.collect.ImmutableList;
 
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
 import org.mybatis.jpetstore.service.AccountService;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.mybatis.jpetstore.session.SessionStateStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -49,10 +48,9 @@ public class AccountController {
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
   /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
+  private static final List<String> LANGUAGE_LIST = ImmutableList.of("english", "japanese");
   /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  private static final List<String> CATEGORY_LIST = ImmutableList.of("FISH", "DOGS", "REPTILES", "CATS", "BIRDS");
 
   /** The account service. */
   @Autowired
@@ -60,6 +58,9 @@ public class AccountController {
   /** The catalog service. */
   @Autowired
   private CatalogService catalogService;
+  /** The externalized (Memorystore for Redis) session state store. */
+  @Autowired
+  private SessionStateStore session;
 
   /**
    * Signon form.
@@ -78,8 +79,6 @@ public class AccountController {
    *          the username
    * @param password
    *          the password
-   * @param session
-   *          the session
    * @param model
    *          the model
    *
@@ -87,7 +86,7 @@ public class AccountController {
    */
   @PostMapping("/signon")
   public String signon(@RequestParam("username") String username, @RequestParam("password") String password,
-      HttpSession session, Model model) {
+      Model model) {
     Account account = accountService.getAccount(username, password);
     if (account == null) {
       model.addAttribute("message", "Invalid username or password.  Signon failed.");
@@ -102,13 +101,10 @@ public class AccountController {
   /**
    * Signoff.
    *
-   * @param session
-   *          the session
-   *
    * @return the string
    */
   @GetMapping("/signoff")
-  public String signoff(HttpSession session) {
+  public String signoff() {
     session.invalidate();
     return "redirect:/catalog";
   }
@@ -146,15 +142,13 @@ public class AccountController {
   /**
    * Edit account form.
    *
-   * @param session
-   *          the session
    * @param model
    *          the model
    *
    * @return the string
    */
   @GetMapping("/edit")
-  public String editAccountForm(HttpSession session, Model model) {
+  public String editAccountForm(Model model) {
     AccountSession accountSession = (AccountSession) session.getAttribute("accountBean");
     if (accountSession != null) {
       model.addAttribute("account", accountSession.getAccount());
@@ -169,13 +163,11 @@ public class AccountController {
    *
    * @param account
    *          the account
-   * @param session
-   *          the session
    *
    * @return the string
    */
   @PostMapping("/edit")
-  public String editAccount(@ModelAttribute Account account, HttpSession session) {
+  public String editAccount(@ModelAttribute Account account) {
     accountService.updateAccount(account);
     Account updatedAccount = accountService.getAccount(account.getUsername());
     List<Product> myList = catalogService.getProductListByCategory(updatedAccount.getFavouriteCategoryId());

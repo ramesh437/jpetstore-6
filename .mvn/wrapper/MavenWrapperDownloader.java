@@ -26,7 +26,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 
 /**
  * The Class MavenWrapperDownloader.
@@ -39,6 +39,27 @@ public final class MavenWrapperDownloader {
     /** The verbose. */
     private static final boolean VERBOSE = Boolean.parseBoolean(System.getenv("MVNW_VERBOSE"));
 
+    /** The connect timeout in milliseconds (override with MVNW_CONNECT_TIMEOUT_MS). */
+    private static final int CONNECT_TIMEOUT_MS = getTimeout("MVNW_CONNECT_TIMEOUT_MS", 10000);
+
+    /** The read timeout in milliseconds (override with MVNW_READ_TIMEOUT_MS). */
+    private static final int READ_TIMEOUT_MS = getTimeout("MVNW_READ_TIMEOUT_MS", 30000);
+
+    /** In-progress temp file, cleaned up by the shutdown hook on SIGTERM/SIGINT. */
+    private static volatile Path currentTemp;
+
+    private static int getTimeout(String envName, int defaultValue) {
+        final String value = System.getenv(envName);
+        if (value == null || value.trim().isEmpty()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
     /**
      * Main.
      *
@@ -46,6 +67,18 @@ public final class MavenWrapperDownloader {
      */
     public static void main(String[] args) {
         log("Apache Maven Wrapper Downloader " + WRAPPER_VERSION);
+
+        // Graceful shutdown: release partial download on SIGTERM/SIGINT
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            final Path temp = currentTemp;
+            if (temp != null) {
+                try {
+                    Files.deleteIfExists(temp);
+                } catch (IOException e) {
+                    // best effort during shutdown
+                }
+            }
+        }, "mvnw-downloader-shutdown"));
 
         if (args.length != 2) {
             System.err.println(" - ERROR wrapperUrl or wrapperJarPath parameter missing");
@@ -94,12 +127,17 @@ public final class MavenWrapperDownloader {
         Path temp = wrapperJarPath
                 .getParent()
                 .resolve(wrapperJarPath.getFileName() + "."
-                        + Long.toUnsignedString(ThreadLocalRandom.current().nextLong()) + ".tmp");
-        try (InputStream inStream = wrapperUrl.openStream()) {
+                        + UUID.randomUUID() + ".tmp");
+        currentTemp = temp;
+        final java.net.URLConnection connection = wrapperUrl.openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
+        try (InputStream inStream = connection.getInputStream()) {
             Files.copy(inStream, temp, StandardCopyOption.REPLACE_EXISTING);
             Files.move(temp, wrapperJarPath, StandardCopyOption.REPLACE_EXISTING);
         } finally {
             Files.deleteIfExists(temp);
+            currentTemp = null;
         }
         log(" - Downloader complete");
     }

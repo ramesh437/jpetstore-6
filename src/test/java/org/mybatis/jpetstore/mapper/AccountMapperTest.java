@@ -45,6 +45,18 @@ class AccountMapperTest {
   private JdbcTemplate jdbcTemplate;
 
   /**
+   * Resolve the test password from an externalized secret (system property or environment variable, injected from
+   * Google Secret Manager), falling back to the value stored in the seeded signon table.
+   */
+  private String resolveTestPassword(String username) {
+    String secret = System.getProperty("TEST_ACCOUNT_PASSWORD", System.getenv("TEST_ACCOUNT_PASSWORD"));
+    if (secret != null && !secret.isEmpty()) {
+      return secret;
+    }
+    return jdbcTemplate.queryForObject("SELECT password FROM signon WHERE username = ?", String.class, username);
+  }
+
+  /**
    * Gets the account by username.
    */
   @Test
@@ -83,7 +95,9 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is not embedded in source: it is resolved from the externalized secret
+    // (env var / system property populated from Google Secret Manager) or, as a fallback, from the seeded test data.
+    String password = resolveTestPassword(username);
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

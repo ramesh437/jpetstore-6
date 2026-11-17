@@ -18,8 +18,14 @@ package org.mybatis.jpetstore.web.controllers;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
@@ -48,11 +54,30 @@ public class AccountController {
   /** The edit account view. */
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
-  /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
-  /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  /** The language list key. */
+  private static final String LANGUAGE_KEY = "languages";
+  /** The category list key. */
+  private static final String CATEGORY_KEY = "categories";
+
+  /** Bounded reference data cache (size-limited with expiry) to prevent unbounded memory growth. */
+  private static final LoadingCache<String, List<String>> REFERENCE_DATA = CacheBuilder.newBuilder().maximumSize(10)
+      .expireAfterAccess(1, TimeUnit.HOURS).build(new CacheLoader<String, List<String>>() {
+        @Override
+        public List<String> load(String key) {
+          if (LANGUAGE_KEY.equals(key)) {
+            return Collections.unmodifiableList(Arrays.asList("english", "japanese"));
+          }
+          return Collections.unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+        }
+      });
+
+  private static List<String> referenceData(String key) {
+    try {
+      return REFERENCE_DATA.get(key);
+    } catch (ExecutionException e) {
+      throw new IllegalStateException(e);
+    }
+  }
 
   /** The account service. */
   @Autowired
@@ -123,8 +148,8 @@ public class AccountController {
    */
   @GetMapping("/new")
   public String newAccountForm(Model model) {
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", referenceData(LANGUAGE_KEY));
+    model.addAttribute("categories", referenceData(CATEGORY_KEY));
     model.addAttribute("account", new Account());
     return NEW_ACCOUNT_VIEW;
   }
@@ -159,8 +184,8 @@ public class AccountController {
     if (accountSession != null) {
       model.addAttribute("account", accountSession.getAccount());
     }
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", referenceData(LANGUAGE_KEY));
+    model.addAttribute("categories", referenceData(CATEGORY_KEY));
     return EDIT_ACCOUNT_VIEW;
   }
 

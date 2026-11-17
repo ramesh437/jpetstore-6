@@ -38,6 +38,10 @@ import org.springframework.ui.Model;
 
 /**
  * The Class AccountControllerTest.
+ * <p>
+ * The {@link javax.servlet.http.HttpSession} mocked here is the container-facing API only; in deployment it is backed by
+ * Spring Session on Memorystore for Redis (see {@code SessionConfig}), so no session state is held in the JVM.
+ * </p>
  */
 @ExtendWith(MockitoExtension.class)
 class AccountControllerTest {

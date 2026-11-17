@@ -83,7 +83,11 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is resolved at runtime from externalized configuration (environment variable or JVM system property
+    // populated from Google Secret Manager, e.g. via Spring Cloud GCP "sm://" references / secret injection) instead of
+    // being hard-coded in source. The fallback is the non-sensitive seed value from the embedded HSQLDB test data load.
+    String password = System.getProperty("jpetstore.test.acid.password",
+        System.getenv().getOrDefault("JPETSTORE_TEST_ACID_PASSWORD", username));
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

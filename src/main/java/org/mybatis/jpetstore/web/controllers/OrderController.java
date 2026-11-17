@@ -18,8 +18,13 @@ package org.mybatis.jpetstore.web.controllers;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Order;
@@ -35,6 +40,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * The Class OrderController.
+ * <p>
+ * The {@link HttpSession} is externalised to Memorystore for Redis (Spring Session, see
+ * {@code org.mybatis.jpetstore.web.configuration.SessionConfig}); the instance itself keeps no session state.
+ * </p>
  */
 @Controller
 @RequestMapping("/order")
@@ -54,8 +63,9 @@ public class OrderController {
   private static final String ERROR_VIEW = "common/Error";
 
   /** The card type list. */
-  private static final List<String> CARD_TYPE_LIST = Collections
-      .unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
+  private static final LoadingCache<String, List<String>> CARD_TYPE_LIST = CacheBuilder.newBuilder().maximumSize(10)
+      .expireAfterAccess(1, TimeUnit.HOURS).build(CacheLoader.from(
+          key -> Collections.unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"))));
 
   /** The order service. */
   @Autowired
@@ -111,7 +121,7 @@ public class OrderController {
       order.initOrder(accountSession.getAccount(), cart);
       session.setAttribute("order", order);
       model.addAttribute("order", order);
-      model.addAttribute("creditCardTypes", CARD_TYPE_LIST);
+      model.addAttribute("creditCardTypes", CARD_TYPE_LIST.getUnchecked("creditCardTypes"));
       return NEW_ORDER_VIEW;
     }
     model.addAttribute("message", "An order could not be created because a cart could not be found.");

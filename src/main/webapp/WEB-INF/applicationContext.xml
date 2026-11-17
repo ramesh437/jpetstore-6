@@ -33,6 +33,9 @@
         <jdbc:script location="classpath:database/jpetstore-hsqldb-dataload.sql"/>
     </jdbc:embedded-database>
 
+    <!-- HTTP session state externalized to Memorystore for Redis (Spring Session) -->
+    <bean class="org.mybatis.jpetstore.web.configuration.RedisSessionConfiguration" />
+
     <!-- transaction manager, use DataSourceTransactionManager" for JDBC local tx -->
     <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
         <property name="dataSource" ref="dataSource" />

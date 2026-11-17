@@ -83,7 +83,11 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is externalized: injected at runtime from Google Secret Manager (exposed to the test JVM as the
+    // JPETSTORE_TEST_ACID_PASSWORD environment variable or jpetstore.test.acid.password system property).
+    // When unset, the seeded HSQLDB test fixture convention (password equals username) is used.
+    String password = System.getProperty("jpetstore.test.acid.password",
+        System.getenv().getOrDefault("JPETSTORE_TEST_ACID_PASSWORD", username));
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

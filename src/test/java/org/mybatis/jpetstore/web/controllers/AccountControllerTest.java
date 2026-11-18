@@ -33,6 +33,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.service.AccountService;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 
@@ -198,9 +199,10 @@ class AccountControllerTest {
    */
   @Test
   void editAccountFormWithoutSessionReturnsEditAccountViewWithoutAccount() {
-    HttpSession session = mock(HttpSession.class);
+    // Session state is held in an in-memory session (no container session affinity; production state is
+    // externalized to Memorystore for Redis via Spring Session).
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
-    when(session.getAttribute("accountBean")).thenReturn(null);
 
     String view = accountController.editAccountForm(session, model);
 

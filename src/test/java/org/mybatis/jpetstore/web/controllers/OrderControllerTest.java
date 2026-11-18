@@ -17,14 +17,11 @@ package org.mybatis.jpetstore.web.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-
-import javax.servlet.http.HttpSession;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +30,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.service.OrderService;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 
@@ -55,9 +53,10 @@ class OrderControllerTest {
    */
   @Test
   void listOrdersWithoutAuthReturnsError() {
-    HttpSession session = mock(HttpSession.class);
+    // Session state is held in an in-memory session (no container session affinity; production state is
+    // externalized to Memorystore for Redis via Spring Session).
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
-    when(session.getAttribute("accountBean")).thenReturn(null);
 
     String view = orderController.listOrders(session, model);
 
@@ -70,10 +69,11 @@ class OrderControllerTest {
    */
   @Test
   void newOrderFormWithoutAuthRedirects() {
-    HttpSession session = mock(HttpSession.class);
+    // Session state is held in an in-memory session (no container session affinity; production state is
+    // externalized to Memorystore for Redis via Spring Session).
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
-    when(session.getAttribute("accountBean")).thenReturn(null);
-    when(session.getAttribute("cart")).thenReturn(new Cart());
+    session.setAttribute("cart", new Cart());
 
     String view = orderController.newOrderForm(session, model);
 
@@ -85,7 +85,9 @@ class OrderControllerTest {
    */
   @Test
   void newOrderFormWithAuthAndCartReturnsNewOrderView() {
-    HttpSession session = mock(HttpSession.class);
+    // Session state is held in an in-memory session (no container session affinity; production state is
+    // externalized to Memorystore for Redis via Spring Session).
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
 
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
@@ -99,10 +101,10 @@ class OrderControllerTest {
     account.setZip("94303");
     account.setCountry("USA");
     AccountController.AccountSession accountSession = new AccountController.AccountSession(account, List.of(), true);
-    when(session.getAttribute("accountBean")).thenReturn(accountSession);
+    session.setAttribute("accountBean", accountSession);
 
     Cart cart = new Cart();
-    when(session.getAttribute("cart")).thenReturn(cart);
+    session.setAttribute("cart", cart);
 
     String view = orderController.newOrderForm(session, model);
 
@@ -112,7 +114,7 @@ class OrderControllerTest {
     assertThat(order.getUsername()).isEqualTo("j2ee");
     assertThat(order.getShipAddress1()).isEqualTo("901 San Antonio Road");
     assertThat(model.asMap()).containsKey("creditCardTypes");
-    verify(session, times(1)).setAttribute("order", order);
+    assertThat(session.getAttribute("order")).isSameAs(order);
   }
 
   /**
@@ -120,12 +122,14 @@ class OrderControllerTest {
    */
   @Test
   void listOrdersWithAuthReturnsOrderList() {
-    HttpSession session = mock(HttpSession.class);
+    // Session state is held in an in-memory session (no container session affinity; production state is
+    // externalized to Memorystore for Redis via Spring Session).
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
     account.setUsername("j2ee");
     AccountController.AccountSession accountSession = new AccountController.AccountSession(account, List.of(), true);
-    when(session.getAttribute("accountBean")).thenReturn(accountSession);
+    session.setAttribute("accountBean", accountSession);
     when(orderService.getOrdersByUsername("j2ee")).thenReturn(List.of());
 
     String view = orderController.listOrders(session, model);
@@ -143,7 +147,9 @@ class OrderControllerTest {
     // The @ModelAttribute Order is therefore all-null. The controller must use
     // the session order (which has the full billing address) and must NOT
     // overwrite it with the null-filled model attribute.
-    HttpSession session = mock(HttpSession.class);
+    // Session state is held in an in-memory session (no container session affinity; production state is
+    // externalized to Memorystore for Redis via Spring Session).
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
 
     org.mybatis.jpetstore.domain.Order sessionOrder = new org.mybatis.jpetstore.domain.Order();
@@ -158,7 +164,7 @@ class OrderControllerTest {
     sessionOrder.setExpiryDate("12/03");
     sessionOrder.setCardType("Visa");
 
-    when(session.getAttribute("order")).thenReturn(sessionOrder);
+    session.setAttribute("order", sessionOrder);
 
     // Simulate ConfirmOrder POST: empty @ModelAttribute (all fields null), confirmed=true
     org.mybatis.jpetstore.domain.Order emptyOrder = new org.mybatis.jpetstore.domain.Order();
@@ -185,7 +191,9 @@ class OrderControllerTest {
     // The controller must NOT overwrite the billing address stored in the session
     // with these null values, or the subsequent insertOrder will fail with a
     // NOT NULL constraint violation on BILLADDR1.
-    HttpSession session = mock(HttpSession.class);
+    // Session state is held in an in-memory session (no container session affinity; production state is
+    // externalized to Memorystore for Redis via Spring Session).
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
 
     org.mybatis.jpetstore.domain.Order sessionOrder = new org.mybatis.jpetstore.domain.Order();
@@ -200,7 +208,7 @@ class OrderControllerTest {
     sessionOrder.setExpiryDate("12/03");
     sessionOrder.setCardType("Visa");
 
-    when(session.getAttribute("order")).thenReturn(sessionOrder);
+    session.setAttribute("order", sessionOrder);
 
     // Simulate ShippingForm POST: only shipping fields present, billing all null
     org.mybatis.jpetstore.domain.Order shippingFormOrder = new org.mybatis.jpetstore.domain.Order();
@@ -233,9 +241,10 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithoutAuthRedirects() {
-    HttpSession session = mock(HttpSession.class);
+    // Session state is held in an in-memory session (no container session affinity; production state is
+    // externalized to Memorystore for Redis via Spring Session).
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
-    when(session.getAttribute("accountBean")).thenReturn(null);
 
     String view = orderController.viewOrder(1, session, model);
 
@@ -247,12 +256,14 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithAuthAndMatchingUsernameReturnsViewOrder() {
-    HttpSession session = mock(HttpSession.class);
+    // Session state is held in an in-memory session (no container session affinity; production state is
+    // externalized to Memorystore for Redis via Spring Session).
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
     account.setUsername("j2ee");
     AccountController.AccountSession accountSession = new AccountController.AccountSession(account, List.of(), true);
-    when(session.getAttribute("accountBean")).thenReturn(accountSession);
+    session.setAttribute("accountBean", accountSession);
 
     org.mybatis.jpetstore.domain.Order order = new org.mybatis.jpetstore.domain.Order();
     order.setUsername("j2ee");
@@ -269,12 +280,14 @@ class OrderControllerTest {
    */
   @Test
   void viewOrderWithAuthButDifferentUsernameReturnsError() {
-    HttpSession session = mock(HttpSession.class);
+    // Session state is held in an in-memory session (no container session affinity; production state is
+    // externalized to Memorystore for Redis via Spring Session).
+    MockHttpSession session = new MockHttpSession();
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
     account.setUsername("j2ee");
     AccountController.AccountSession accountSession = new AccountController.AccountSession(account, List.of(), true);
-    when(session.getAttribute("accountBean")).thenReturn(accountSession);
+    session.setAttribute("accountBean", accountSession);
 
     org.mybatis.jpetstore.domain.Order order = new org.mybatis.jpetstore.domain.Order();
     order.setUsername("someoneelse");

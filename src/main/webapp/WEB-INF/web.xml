@@ -31,6 +31,10 @@
     <listener>
         <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
     </listener>
+    <!-- registered explicitly: the embedded Tomcat does not scan the executable JAR for @WebListener classes -->
+    <listener>
+        <listener-class>org.mybatis.jpetstore.web.configuration.StaxFactoryInitializationListener</listener-class>
+    </listener>
 
     <servlet>
         <servlet-name>dispatcher</servlet-name>

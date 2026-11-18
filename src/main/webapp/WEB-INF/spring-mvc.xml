@@ -30,6 +30,11 @@
 
     <context:component-scan base-package="org.mybatis.jpetstore.web.controllers" />
 
+    <!-- expose the externalized (Memorystore for Redis) account state to the views as request attribute "accountBean" -->
+    <mvc:interceptors>
+        <bean class="org.mybatis.jpetstore.web.session.SessionStateInterceptor" />
+    </mvc:interceptors>
+
     <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
         <property name="prefix" value="/WEB-INF/jsp/" />
         <property name="suffix" value=".jsp" />

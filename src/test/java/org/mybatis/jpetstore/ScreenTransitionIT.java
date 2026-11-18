@@ -57,7 +57,7 @@ class ScreenTransitionIT {
     browser = CHROME;
     headless = true;
     timeout = TimeUnit.SECONDS.toMillis(10);
-    baseUrl = "http://127.0.0.1:8080/jpetstore";
+    baseUrl = System.getProperty("jpetstore.baseUrl", "http://127.0.0.1:8080");
   }
 
   /**
@@ -215,7 +215,7 @@ class ScreenTransitionIT {
     $(By.cssSelector("#Catalog h3")).shouldBe(text("User Information"));
 
     // Create a new user
-    String userId = String.valueOf(System.currentTimeMillis());
+    String userId = String.valueOf(java.time.Instant.now().toEpochMilli());
     $(By.name("username")).setValue(userId);
     $(By.name("password")).setValue("password");
     $(By.name("repeatedPassword")).setValue("password");

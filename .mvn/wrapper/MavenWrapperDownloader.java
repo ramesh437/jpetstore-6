@@ -23,10 +23,11 @@ import java.net.Authenticator;
 import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 
 /**
  * The Class MavenWrapperDownloader.
@@ -39,12 +40,33 @@ public final class MavenWrapperDownloader {
     /** The verbose. */
     private static final boolean VERBOSE = Boolean.parseBoolean(System.getenv("MVNW_VERBOSE"));
 
+    /** Connect timeout in ms (override with MVNW_CONNECT_TIMEOUT_MS). */
+    private static final int CONNECT_TIMEOUT_MS = parseTimeout("MVNW_CONNECT_TIMEOUT_MS", 10000);
+
+    /** Read timeout in ms (override with MVNW_READ_TIMEOUT_MS). */
+    private static final int READ_TIMEOUT_MS = parseTimeout("MVNW_READ_TIMEOUT_MS", 30000);
+
+    /** Temp file currently being downloaded; cleaned up on SIGTERM/shutdown. */
+    private static volatile Path currentTempFile;
+
     /**
      * Main.
      *
      * @param args the args
      */
     public static void main(String[] args) {
+        // Graceful shutdown: release partial download on SIGTERM/SIGINT
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            final Path temp = currentTempFile;
+            if (temp != null) {
+                try {
+                    Files.deleteIfExists(temp);
+                } catch (IOException ignored) {
+                    // best effort cleanup during shutdown
+                }
+            }
+            log(" - Shutdown hook completed");
+        }, "mvnw-downloader-shutdown"));
         log("Apache Maven Wrapper Downloader " + WRAPPER_VERSION);
 
         if (args.length != 2) {
@@ -94,14 +116,46 @@ public final class MavenWrapperDownloader {
         Path temp = wrapperJarPath
                 .getParent()
                 .resolve(wrapperJarPath.getFileName() + "."
-                        + Long.toUnsignedString(ThreadLocalRandom.current().nextLong()) + ".tmp");
-        try (InputStream inStream = wrapperUrl.openStream()) {
+                        + UUID.randomUUID() + ".tmp");
+        currentTempFile = temp;
+        try (InputStream inStream = openConnectionWithTimeouts(wrapperUrl)) {
             Files.copy(inStream, temp, StandardCopyOption.REPLACE_EXISTING);
             Files.move(temp, wrapperJarPath, StandardCopyOption.REPLACE_EXISTING);
         } finally {
             Files.deleteIfExists(temp);
+            currentTempFile = null;
         }
         log(" - Downloader complete");
+    }
+
+    /**
+     * Parse a timeout from an environment variable.
+     *
+     * @param name the env var name
+     * @param defaultValue the default in ms
+     * @return the timeout in ms
+     */
+    private static int parseTimeout(String name, int defaultValue) {
+        try {
+            final String value = System.getenv(name);
+            return value == null ? defaultValue : Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    /**
+     * Open a stream with explicit connect and read timeouts.
+     *
+     * @param url the url
+     * @return the input stream
+     * @throws IOException the io exception
+     */
+    private static InputStream openConnectionWithTimeouts(URL url) throws IOException {
+        final URLConnection connection = url.openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
+        return connection.getInputStream();
     }
 
     /**

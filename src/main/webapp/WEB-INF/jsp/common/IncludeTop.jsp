@@ -48,7 +48,7 @@
                 <a href="${pageContext.request.contextPath}/cart"><img align="middle" name="img_cart" src="${pageContext.request.contextPath}/images/cart.gif" /></a>
                 <img align="middle" src="${pageContext.request.contextPath}/images/separator.gif" />
                 <c:choose>
-                    <c:when test="${sessionScope.accountBean == null || !sessionScope.accountBean.authenticated}">
+                    <c:when test="${requestScope.accountBean == null || !requestScope.accountBean.authenticated}">
                         <a href="${pageContext.request.contextPath}/account">Sign In</a>
                     </c:when>
                     <c:otherwise>

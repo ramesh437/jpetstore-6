@@ -71,9 +71,9 @@
     </div>
 
     <div id="MyList">
-        <c:if test="${sessionScope.accountBean != null}">
-            <c:if test="${sessionScope.accountBean.authenticated}">
-                <c:if test="${sessionScope.accountBean.account.listOption}">
+        <c:if test="${requestScope.accountBean != null}">
+            <c:if test="${requestScope.accountBean.authenticated}">
+                <c:if test="${requestScope.accountBean.account.listOption}">
                     <%@ include file="IncludeMyList.jsp"%>
                 </c:if>
             </c:if>

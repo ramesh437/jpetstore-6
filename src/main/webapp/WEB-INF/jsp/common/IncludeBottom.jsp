@@ -22,10 +22,10 @@
 <div id="PoweredBy">&nbsp;<a href="http://www.mybatis.org">www.mybatis.org</a>
 </div>
 
-<div id="Banner"><c:if test="${sessionScope.accountBean != null }">
-	<c:if test="${sessionScope.accountBean.authenticated}">
-		<c:if test="${sessionScope.accountBean.account.bannerOption}">
-          ${sessionScope.accountBean.account.bannerName}
+<div id="Banner"><c:if test="${requestScope.accountBean != null }">
+	<c:if test="${requestScope.accountBean.authenticated}">
+		<c:if test="${requestScope.accountBean.account.bannerOption}">
+          ${requestScope.accountBean.account.bannerName}
         </c:if>
 	</c:if>
 </c:if></div>

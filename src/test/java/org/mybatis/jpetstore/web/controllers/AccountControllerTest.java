@@ -16,9 +16,9 @@
 package org.mybatis.jpetstore.web.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -33,6 +33,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.service.AccountService;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 
@@ -66,7 +67,7 @@ class AccountControllerTest {
    */
   @Test
   void signonWithInvalidCredentialsReturnsSignonView() {
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = spy(new MockHttpSession());
     Model model = new ExtendedModelMap();
     when(accountService.getAccount("bad", "bad")).thenReturn(null);
 
@@ -81,7 +82,7 @@ class AccountControllerTest {
    */
   @Test
   void signonWithValidCredentialsRedirects() {
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = spy(new MockHttpSession());
     Model model = new ExtendedModelMap();
     Account account = new Account();
     account.setUsername("j2ee");
@@ -111,7 +112,7 @@ class AccountControllerTest {
    */
   @Test
   void signoffInvalidatesSessionAndRedirectsToCatalog() {
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = spy(new MockHttpSession());
 
     String view = accountController.signoff(session);
 
@@ -161,7 +162,7 @@ class AccountControllerTest {
   void editAccountRedirectsToEditPageNotCatalog() {
     // After saving account, should redirect to /account/edit so the user stays
     // on their profile page (the IT test expects the edit form to reload).
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = spy(new MockHttpSession());
     Account account = new Account();
     account.setUsername("j2ee");
     account.setFavouriteCategoryId("FISH");
@@ -178,7 +179,7 @@ class AccountControllerTest {
    */
   @Test
   void editAccountFormWithSessionReturnsEditAccountViewWithAccount() {
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = spy(new MockHttpSession());
     Model model = new ExtendedModelMap();
     Account account = new Account();
     account.setUsername("j2ee");
@@ -198,7 +199,7 @@ class AccountControllerTest {
    */
   @Test
   void editAccountFormWithoutSessionReturnsEditAccountViewWithoutAccount() {
-    HttpSession session = mock(HttpSession.class);
+    HttpSession session = spy(new MockHttpSession());
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
 

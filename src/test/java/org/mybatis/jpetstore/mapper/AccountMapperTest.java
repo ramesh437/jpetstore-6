@@ -45,6 +45,28 @@ class AccountMapperTest {
   private JdbcTemplate jdbcTemplate;
 
   /**
+   * Resolves the credential used by the test without embedding it in source code.
+   * <p>
+   * The value is read from the {@code JPETSTORE_TEST_ACCOUNT_PASSWORD} environment variable (or system property),
+   * which is populated from Google Secret Manager (e.g. via Spring Cloud GCP {@code sm://} references or secret
+   * injection at runtime). If it is not provided, the value is read from the seeded test database.
+   *
+   * @param username
+   *          the username
+   * @return the password
+   */
+  private String resolveTestPassword(String username) {
+    String secret = System.getenv("JPETSTORE_TEST_ACCOUNT_PASSWORD");
+    if (secret == null || secret.isEmpty()) {
+      secret = System.getProperty("jpetstore.test.account.password");
+    }
+    if (secret == null || secret.isEmpty()) {
+      secret = jdbcTemplate.queryForObject("SELECT password FROM signon WHERE username = ?", String.class, username);
+    }
+    return secret;
+  }
+
+  /**
    * Gets the account by username.
    */
   @Test
@@ -83,7 +105,7 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    String password = resolveTestPassword(username);
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

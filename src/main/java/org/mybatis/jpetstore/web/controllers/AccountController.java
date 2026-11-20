@@ -15,11 +15,13 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.ImmutableList;
 
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
@@ -48,11 +50,34 @@ public class AccountController {
   /** The edit account view. */
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
-  /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
-  /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  /** Maximum number of entries in the reference-data cache. */
+  private static final long REF_CACHE_MAX_SIZE = 10;
+  /** Reference-data cache key for languages. */
+  private static final String LANGUAGE_KEY = "languages";
+  /** Reference-data cache key for categories. */
+  private static final String CATEGORY_KEY = "categories";
+
+  /** Bounded reference-data cache (size-limited with expiry) to prevent unbounded memory growth. */
+  private static final Cache<String, List<String>> REF_DATA_CACHE = CacheBuilder.newBuilder()
+      .maximumSize(REF_CACHE_MAX_SIZE).expireAfterAccess(1, java.util.concurrent.TimeUnit.HOURS).build();
+
+  private static List<String> languageList() {
+    List<String> list = REF_DATA_CACHE.getIfPresent(LANGUAGE_KEY);
+    if (list == null) {
+      list = ImmutableList.of("english", "japanese");
+      REF_DATA_CACHE.put(LANGUAGE_KEY, list);
+    }
+    return list;
+  }
+
+  private static List<String> categoryList() {
+    List<String> list = REF_DATA_CACHE.getIfPresent(CATEGORY_KEY);
+    if (list == null) {
+      list = ImmutableList.of("FISH", "DOGS", "REPTILES", "CATS", "BIRDS");
+      REF_DATA_CACHE.put(CATEGORY_KEY, list);
+    }
+    return list;
+  }
 
   /** The account service. */
   @Autowired
@@ -123,8 +148,8 @@ public class AccountController {
    */
   @GetMapping("/new")
   public String newAccountForm(Model model) {
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", languageList());
+    model.addAttribute("categories", categoryList());
     model.addAttribute("account", new Account());
     return NEW_ACCOUNT_VIEW;
   }
@@ -159,8 +184,8 @@ public class AccountController {
     if (accountSession != null) {
       model.addAttribute("account", accountSession.getAccount());
     }
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", languageList());
+    model.addAttribute("categories", categoryList());
     return EDIT_ACCOUNT_VIEW;
   }
 

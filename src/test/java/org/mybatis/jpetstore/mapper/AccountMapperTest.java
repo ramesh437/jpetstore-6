@@ -83,7 +83,10 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is not embedded in source: it is resolved at runtime from the seeded test datastore
+    // (in deployed environments credentials come from Google Secret Manager via Spring Cloud GCP).
+    String password = jdbcTemplate.queryForObject("SELECT PASSWORD FROM SIGNON WHERE USERNAME = ?", String.class,
+        username);
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

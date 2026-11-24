@@ -18,8 +18,12 @@ package org.mybatis.jpetstore.web.controllers;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
@@ -49,10 +53,21 @@ public class AccountController {
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
   /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
+  private static final Cache<String, List<String>> LANGUAGE_LIST_CACHE = CacheBuilder.newBuilder().maximumSize(10)
+      .expireAfterAccess(1, TimeUnit.HOURS).build();
   /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  private static final Cache<String, List<String>> CATEGORY_LIST_CACHE = CacheBuilder.newBuilder().maximumSize(10)
+      .expireAfterAccess(1, TimeUnit.HOURS).build();
+
+  private static List<String> getLanguageList() {
+    return LANGUAGE_LIST_CACHE.asMap().computeIfAbsent("languages",
+        k -> Collections.unmodifiableList(Arrays.asList("english", "japanese")));
+  }
+
+  private static List<String> getCategoryList() {
+    return CATEGORY_LIST_CACHE.asMap().computeIfAbsent("categories",
+        k -> Collections.unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS")));
+  }
 
   /** The account service. */
   @Autowired
@@ -123,8 +138,8 @@ public class AccountController {
    */
   @GetMapping("/new")
   public String newAccountForm(Model model) {
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", getLanguageList());
+    model.addAttribute("categories", getCategoryList());
     model.addAttribute("account", new Account());
     return NEW_ACCOUNT_VIEW;
   }
@@ -159,8 +174,8 @@ public class AccountController {
     if (accountSession != null) {
       model.addAttribute("account", accountSession.getAccount());
     }
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", getLanguageList());
+    model.addAttribute("categories", getCategoryList());
     return EDIT_ACCOUNT_VIEW;
   }
 

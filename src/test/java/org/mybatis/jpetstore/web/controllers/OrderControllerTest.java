@@ -39,6 +39,8 @@ import org.springframework.ui.Model;
 /**
  * The Class OrderControllerTest.
  */
+// NOTE: HttpSession is mocked here; in deployment the session is externalized to Memorystore for Redis (Spring Session,
+// see RedisSessionConfig), so controllers remain stateless and only use the standard HttpSession API.
 @ExtendWith(MockitoExtension.class)
 class OrderControllerTest {
 

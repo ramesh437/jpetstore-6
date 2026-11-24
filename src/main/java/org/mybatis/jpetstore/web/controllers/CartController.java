@@ -18,17 +18,18 @@ package org.mybatis.jpetstore.web.controllers;
 import java.util.Iterator;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.CartItem;
 import org.mybatis.jpetstore.domain.Item;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.mybatis.jpetstore.web.session.UserState;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -49,16 +50,16 @@ public class CartController {
   /**
    * Get cart.
    *
-   * @param session
-   *          the session
+   * @param userState
+   *          the user state held in Redis
    *
    * @return the cart
    */
-  private Cart getCart(HttpSession session) {
-    Cart cart = (Cart) session.getAttribute("cart");
+  private Cart getCart(UserState userState) {
+    Cart cart = (Cart) userState.getAttribute("cart");
     if (cart == null) {
       cart = new Cart();
-      session.setAttribute("cart", cart);
+      userState.setAttribute("cart", cart);
     }
     return cart;
   }
@@ -66,16 +67,16 @@ public class CartController {
   /**
    * View cart.
    *
-   * @param session
-   *          the session
+   * @param userState
+   *          the user state held in Redis
    * @param model
    *          the model
    *
    * @return the string
    */
   @GetMapping({ "", "/" })
-  public String viewCart(HttpSession session, Model model) {
-    model.addAttribute("cart", getCart(session));
+  public String viewCart(@RequestAttribute(UserState.REQUEST_ATTRIBUTE) UserState userState, Model model) {
+    model.addAttribute("cart", getCart(userState));
     return "cart/Cart";
   }
 
@@ -84,8 +85,8 @@ public class CartController {
    *
    * @param workingItemId
    *          the working item id
-   * @param session
-   *          the session
+   * @param userState
+   *          the user state held in Redis
    * @param model
    *          the model
    *
@@ -93,12 +94,12 @@ public class CartController {
    */
   @GetMapping("/addItem")
   public String addItemToCart(@RequestParam(value = "workingItemId", required = false) String workingItemId,
-      HttpSession session, Model model) {
+      @RequestAttribute(UserState.REQUEST_ATTRIBUTE) UserState userState, Model model) {
     if (workingItemId == null || workingItemId.trim().isEmpty()) {
       model.addAttribute("message", "Invalid item ID: cannot add item to cart.");
       return ERROR_VIEW;
     }
-    Cart cart = getCart(session);
+    Cart cart = getCart(userState);
     if (cart.containsItemId(workingItemId)) {
       cart.incrementQuantityByItemId(workingItemId);
     } else {
@@ -106,6 +107,7 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    userState.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -115,8 +117,8 @@ public class CartController {
    *
    * @param workingItemId
    *          the working item id
-   * @param session
-   *          the session
+   * @param userState
+   *          the user state held in Redis
    * @param model
    *          the model
    *
@@ -124,17 +126,18 @@ public class CartController {
    */
   @GetMapping("/removeItem")
   public String removeItemFromCart(@RequestParam(value = "workingItemId", required = false) String workingItemId,
-      HttpSession session, Model model) {
+      @RequestAttribute(UserState.REQUEST_ATTRIBUTE) UserState userState, Model model) {
     if (workingItemId == null || workingItemId.trim().isEmpty()) {
       model.addAttribute("message", "Invalid item ID: cannot remove item from cart.");
       return ERROR_VIEW;
     }
-    Cart cart = getCart(session);
+    Cart cart = getCart(userState);
     Item item = cart.removeItemById(workingItemId);
     if (item == null) {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
     }
+    userState.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -144,16 +147,17 @@ public class CartController {
    *
    * @param request
    *          the request
-   * @param session
-   *          the session
+   * @param userState
+   *          the user state held in Redis
    * @param model
    *          the model
    *
    * @return the string
    */
   @PostMapping("/update")
-  public String updateCartQuantities(HttpServletRequest request, HttpSession session, Model model) {
-    Cart cart = getCart(session);
+  public String updateCartQuantities(HttpServletRequest request,
+      @RequestAttribute(UserState.REQUEST_ATTRIBUTE) UserState userState, Model model) {
+    Cart cart = getCart(userState);
     Iterator<CartItem> cartItems = cart.getAllCartItems();
     while (cartItems.hasNext()) {
       CartItem cartItem = cartItems.next();
@@ -168,6 +172,7 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    userState.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -175,16 +180,16 @@ public class CartController {
   /**
    * Check out.
    *
-   * @param session
-   *          the session
+   * @param userState
+   *          the user state held in Redis
    * @param model
    *          the model
    *
    * @return the string
    */
   @GetMapping("/checkout")
-  public String checkOut(HttpSession session, Model model) {
-    model.addAttribute("cart", getCart(session));
+  public String checkOut(@RequestAttribute(UserState.REQUEST_ATTRIBUTE) UserState userState, Model model) {
+    model.addAttribute("cart", getCart(userState));
     return "cart/Checkout";
   }
 

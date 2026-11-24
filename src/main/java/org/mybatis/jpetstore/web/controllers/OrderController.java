@@ -15,21 +15,21 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
-import javax.servlet.http.HttpSession;
 
+import com.google.common.collect.ImmutableList;
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Order;
 import org.mybatis.jpetstore.service.OrderService;
+import org.mybatis.jpetstore.web.session.UserState;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -54,8 +54,7 @@ public class OrderController {
   private static final String ERROR_VIEW = "common/Error";
 
   /** The card type list. */
-  private static final List<String> CARD_TYPE_LIST = Collections
-      .unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
+  private static final List<String> CARD_TYPE_LIST = ImmutableList.of("Visa", "MasterCard", "American Express");
 
   /** The order service. */
   @Autowired
@@ -64,16 +63,16 @@ public class OrderController {
   /**
    * List orders.
    *
-   * @param session
-   *          the session
+   * @param userState
+   *          the user state held in Redis
    * @param model
    *          the model
    *
    * @return the string
    */
   @GetMapping("/list")
-  public String listOrders(HttpSession session, Model model) {
-    AccountController.AccountSession accountSession = (AccountController.AccountSession) session
+  public String listOrders(@RequestAttribute(UserState.REQUEST_ATTRIBUTE) UserState userState, Model model) {
+    AccountController.AccountSession accountSession = (AccountController.AccountSession) userState
         .getAttribute("accountBean");
     if (accountSession == null || !accountSession.isAuthenticated()) {
       model.addAttribute("message",
@@ -88,18 +87,18 @@ public class OrderController {
   /**
    * New order form.
    *
-   * @param session
-   *          the session
+   * @param userState
+   *          the user state held in Redis
    * @param model
    *          the model
    *
    * @return the string
    */
   @GetMapping("/new")
-  public String newOrderForm(HttpSession session, Model model) {
-    AccountController.AccountSession accountSession = (AccountController.AccountSession) session
+  public String newOrderForm(@RequestAttribute(UserState.REQUEST_ATTRIBUTE) UserState userState, Model model) {
+    AccountController.AccountSession accountSession = (AccountController.AccountSession) userState
         .getAttribute("accountBean");
-    Cart cart = (Cart) session.getAttribute("cart");
+    Cart cart = (Cart) userState.getAttribute("cart");
 
     if (accountSession == null || !accountSession.isAuthenticated()) {
       model.addAttribute("message",
@@ -109,7 +108,7 @@ public class OrderController {
     if (cart != null) {
       Order order = new Order();
       order.initOrder(accountSession.getAccount(), cart);
-      session.setAttribute("order", order);
+      userState.setAttribute("order", order);
       model.addAttribute("order", order);
       model.addAttribute("creditCardTypes", CARD_TYPE_LIST);
       return NEW_ORDER_VIEW;
@@ -127,8 +126,8 @@ public class OrderController {
    *          the shipping address required
    * @param confirmed
    *          the confirmed
-   * @param session
-   *          the session
+   * @param userState
+   *          the user state held in Redis
    * @param model
    *          the model
    *
@@ -137,16 +136,17 @@ public class OrderController {
   @PostMapping("/new")
   public String newOrder(@ModelAttribute Order order,
       @RequestParam(value = "shippingAddressRequired", defaultValue = "false") boolean shippingAddressRequired,
-      @RequestParam(value = "confirmed", defaultValue = "false") boolean confirmed, HttpSession session, Model model) {
+      @RequestParam(value = "confirmed", defaultValue = "false") boolean confirmed,
+      @RequestAttribute(UserState.REQUEST_ATTRIBUTE) UserState userState, Model model) {
 
-    Order sessionOrder = (Order) session.getAttribute("order");
+    Order sessionOrder = (Order) userState.getAttribute("order");
 
     // When confirming, use the session order directly - the confirm form only
     // submits confirmed=true with no other fields, so @ModelAttribute Order is empty
     if (confirmed) {
       if (sessionOrder != null) {
         orderService.insertOrder(sessionOrder);
-        session.setAttribute("cart", new Cart());
+        userState.setAttribute("cart", new Cart());
         model.addAttribute("message", "Thank you, your order has been submitted.");
         model.addAttribute("order", sessionOrder);
         return VIEW_ORDER_VIEW;
@@ -196,11 +196,11 @@ public class OrderController {
     }
 
     if (shippingAddressRequired) {
-      session.setAttribute("order", order);
+      userState.setAttribute("order", order);
       model.addAttribute("order", order);
       return SHIPPING_VIEW;
     } else {
-      session.setAttribute("order", order);
+      userState.setAttribute("order", order);
       model.addAttribute("order", order);
       return CONFIRM_VIEW;
     }
@@ -211,16 +211,17 @@ public class OrderController {
    *
    * @param orderId
    *          the order id
-   * @param session
-   *          the session
+   * @param userState
+   *          the user state held in Redis
    * @param model
    *          the model
    *
    * @return the string
    */
   @GetMapping("/view")
-  public String viewOrder(@RequestParam("orderId") int orderId, HttpSession session, Model model) {
-    AccountController.AccountSession accountSession = (AccountController.AccountSession) session
+  public String viewOrder(@RequestParam("orderId") int orderId,
+      @RequestAttribute(UserState.REQUEST_ATTRIBUTE) UserState userState, Model model) {
+    AccountController.AccountSession accountSession = (AccountController.AccountSession) userState
         .getAttribute("accountBean");
     if (accountSession == null || !accountSession.isAuthenticated()) {
       return "redirect:/account";

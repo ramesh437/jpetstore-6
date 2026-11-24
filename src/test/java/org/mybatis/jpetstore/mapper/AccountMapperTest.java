@@ -83,7 +83,13 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is resolved at runtime (system property / environment variable, populated from Google Secret Manager
+    // e.g. via sm://test-account-password) instead of being embedded in source code.
+    String password = System.getProperty("TEST_ACCOUNT_PASSWORD", System.getenv("TEST_ACCOUNT_PASSWORD"));
+    if (password == null) {
+      // fallback to seeded test-data value of the embedded HSQLDB
+      password = username;
+    }
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

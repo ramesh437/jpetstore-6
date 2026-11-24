@@ -83,7 +83,14 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is externalized: injected at runtime from Google Secret Manager (e.g. via Cloud Build/Cloud Run
+    // secret exposure as env var / system property, or Spring Cloud GCP "sm://" property). When not provided, the
+    // value is read from the embedded HSQLDB test dataset so no credential literal lives in source code.
+    String password = System.getProperty("test.account.password", System.getenv("TEST_ACCOUNT_PASSWORD"));
+    if (password == null || password.isEmpty()) {
+      password = jdbcTemplate.queryForObject("SELECT password FROM signon WHERE username = ?", String.class,
+          username);
+    }
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

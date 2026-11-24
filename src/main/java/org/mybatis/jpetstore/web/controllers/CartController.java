@@ -55,6 +55,7 @@ public class CartController {
    * @return the cart
    */
   private Cart getCart(HttpSession session) {
+    // Session is backed by Memorystore for Redis (Spring Session); mutated attributes must be re-set to be persisted.
     Cart cart = (Cart) session.getAttribute("cart");
     if (cart == null) {
       cart = new Cart();
@@ -106,6 +107,7 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -135,6 +137,7 @@ public class CartController {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
     }
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -168,6 +171,7 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }

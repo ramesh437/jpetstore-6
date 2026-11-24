@@ -23,10 +23,11 @@ import java.net.Authenticator;
 import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 
 /**
  * The Class MavenWrapperDownloader.
@@ -39,17 +40,52 @@ public final class MavenWrapperDownloader {
     /** The verbose. */
     private static final boolean VERBOSE = Boolean.parseBoolean(System.getenv("MVNW_VERBOSE"));
 
+    /** Connect timeout in ms (override with MVNW_CONNECT_TIMEOUT_MS). */
+    private static final int CONNECT_TIMEOUT_MS = getTimeout("MVNW_CONNECT_TIMEOUT_MS", 10000);
+
+    /** Read timeout in ms (override with MVNW_READ_TIMEOUT_MS). */
+    private static final int READ_TIMEOUT_MS = getTimeout("MVNW_READ_TIMEOUT_MS", 30000);
+
+    /** Temporary download file, cleaned up by the shutdown hook on SIGTERM/SIGINT. */
+    private static volatile Path tempFile;
+
     /**
      * Main.
      *
      * @param args the args
      */
     public static void main(String[] args) {
+        // Graceful shutdown: release partial download on SIGTERM/SIGINT
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            final Path t = tempFile;
+            if (t != null) {
+                try {
+                    Files.deleteIfExists(t);
+                } catch (IOException e) {
+                    // best effort cleanup during shutdown
+                }
+            }
+        }, "mvnw-downloader-shutdown"));
+
+        final int exitCode = run(args);
+        if (exitCode != 0) {
+            // Non-zero exit code is propagated; registered shutdown hook runs for cleanup
+            Runtime.getRuntime().exit(exitCode);
+        }
+    }
+
+    /**
+     * Run the downloader.
+     *
+     * @param args the args
+     * @return the exit code
+     */
+    private static int run(String[] args) {
         log("Apache Maven Wrapper Downloader " + WRAPPER_VERSION);
 
         if (args.length != 2) {
             System.err.println(" - ERROR wrapperUrl or wrapperJarPath parameter missing");
-            System.exit(1);
+            return 1;
         }
 
         try {
@@ -62,12 +98,13 @@ public final class MavenWrapperDownloader {
             }
             downloadFileFromURL(wrapperUrl, wrapperJarPath);
             log("Done");
+            return 0;
         } catch (IOException e) {
             System.err.println("- Error downloading: " + e.getMessage());
             if (VERBOSE) {
                 e.printStackTrace();
             }
-            System.exit(1);
+            return 1;
         }
     }
 
@@ -94,14 +131,34 @@ public final class MavenWrapperDownloader {
         Path temp = wrapperJarPath
                 .getParent()
                 .resolve(wrapperJarPath.getFileName() + "."
-                        + Long.toUnsignedString(ThreadLocalRandom.current().nextLong()) + ".tmp");
-        try (InputStream inStream = wrapperUrl.openStream()) {
+                        + UUID.randomUUID() + ".tmp");
+        tempFile = temp;
+        final URLConnection connection = wrapperUrl.openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
+        try (InputStream inStream = connection.getInputStream()) {
             Files.copy(inStream, temp, StandardCopyOption.REPLACE_EXISTING);
             Files.move(temp, wrapperJarPath, StandardCopyOption.REPLACE_EXISTING);
         } finally {
             Files.deleteIfExists(temp);
         }
         log(" - Downloader complete");
+    }
+
+    /**
+     * Gets a timeout value from an environment variable.
+     *
+     * @param name the env variable name
+     * @param defaultValue the default value in ms
+     * @return the timeout in ms
+     */
+    private static int getTimeout(String name, int defaultValue) {
+        try {
+            final String value = System.getenv(name);
+            return value == null ? defaultValue : Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 
     /**

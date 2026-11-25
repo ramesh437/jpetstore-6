@@ -33,10 +33,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.codeborne.selenide.SelenideElement;
 import com.codeborne.selenide.junit5.ScreenShooterExtension;
 
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.catalina.startup.Tomcat;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -49,11 +52,27 @@ import org.openqa.selenium.By;
 @ExtendWith(ScreenShooterExtension.class)
 class ScreenTransitionIT {
 
+  private static Tomcat tomcat;
+
+  /**
+   * Stop the embedded server.
+   */
+  @AfterAll
+  static void stopServer() throws Exception {
+    if (tomcat != null) {
+      tomcat.stop();
+      tomcat.destroy();
+    }
+  }
+
   /**
    * Setup selenide.
    */
   @BeforeAll
-  static void setupSelenide() {
+  static void setupSelenide() throws Exception {
+    // The application is a self-contained JAR with embedded Tomcat; start it for the integration test.
+    tomcat = JpetstoreApplication.start(8080, "/jpetstore");
+
     browser = CHROME;
     headless = true;
     timeout = TimeUnit.SECONDS.toMillis(10);
@@ -215,7 +234,7 @@ class ScreenTransitionIT {
     $(By.cssSelector("#Catalog h3")).shouldBe(text("User Information"));
 
     // Create a new user
-    String userId = String.valueOf(System.currentTimeMillis());
+    String userId = String.valueOf(Instant.now().toEpochMilli());
     $(By.name("username")).setValue(userId);
     $(By.name("password")).setValue("password");
     $(By.name("repeatedPassword")).setValue("password");

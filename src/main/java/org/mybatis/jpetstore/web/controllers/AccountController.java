@@ -18,8 +18,12 @@ package org.mybatis.jpetstore.web.controllers;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
@@ -48,11 +52,31 @@ public class AccountController {
   /** The edit account view. */
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
-  /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
-  /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  /** Bounded cache holding the reference lists (max 16 entries, expire after 1 hour of inactivity). */
+  private static final Cache<String, List<String>> REFERENCE_LIST_CACHE = CacheBuilder.newBuilder().maximumSize(16)
+      .expireAfterAccess(1, TimeUnit.HOURS).build();
+
+  /** The language list key. */
+  private static final String LANGUAGE_LIST_KEY = "languages";
+  /** The category list key. */
+  private static final String CATEGORY_LIST_KEY = "categories";
+
+  private static List<String> getLanguageList() {
+    return getCachedList(LANGUAGE_LIST_KEY, "english", "japanese");
+  }
+
+  private static List<String> getCategoryList() {
+    return getCachedList(CATEGORY_LIST_KEY, "FISH", "DOGS", "REPTILES", "CATS", "BIRDS");
+  }
+
+  private static List<String> getCachedList(String key, String... values) {
+    List<String> list = REFERENCE_LIST_CACHE.getIfPresent(key);
+    if (list == null) {
+      list = Collections.unmodifiableList(Arrays.asList(values));
+      REFERENCE_LIST_CACHE.put(key, list);
+    }
+    return list;
+  }
 
   /** The account service. */
   @Autowired
@@ -123,8 +147,8 @@ public class AccountController {
    */
   @GetMapping("/new")
   public String newAccountForm(Model model) {
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", getLanguageList());
+    model.addAttribute("categories", getCategoryList());
     model.addAttribute("account", new Account());
     return NEW_ACCOUNT_VIEW;
   }
@@ -159,8 +183,8 @@ public class AccountController {
     if (accountSession != null) {
       model.addAttribute("account", accountSession.getAccount());
     }
-    model.addAttribute("languages", LANGUAGE_LIST);
-    model.addAttribute("categories", CATEGORY_LIST);
+    model.addAttribute("languages", getLanguageList());
+    model.addAttribute("categories", getCategoryList());
     return EDIT_ACCOUNT_VIEW;
   }
 

@@ -23,10 +23,11 @@ import java.net.Authenticator;
 import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
 
 /**
  * The Class MavenWrapperDownloader.
@@ -35,6 +36,15 @@ public final class MavenWrapperDownloader {
 
     /** The wrapper version. */
     private static final String WRAPPER_VERSION = "3.3.4";
+
+    /** Connect timeout in ms (override with MVNW_CONNECT_TIMEOUT_MS). */
+    private static final int CONNECT_TIMEOUT_MS = intFromEnv("MVNW_CONNECT_TIMEOUT_MS", 10000);
+
+    /** Read timeout in ms (override with MVNW_READ_TIMEOUT_MS). */
+    private static final int READ_TIMEOUT_MS = intFromEnv("MVNW_READ_TIMEOUT_MS", 30000);
+
+    /** Temp file currently being downloaded (cleaned up by shutdown hook). */
+    private static volatile Path currentTemp;
 
     /** The verbose. */
     private static final boolean VERBOSE = Boolean.parseBoolean(System.getenv("MVNW_VERBOSE"));
@@ -45,11 +55,28 @@ public final class MavenWrapperDownloader {
      * @param args the args
      */
     public static void main(String[] args) {
+        // Graceful shutdown: on SIGTERM/SIGINT remove any partially downloaded temp file
+        Runtime.getRuntime().addShutdownHook(new Thread(MavenWrapperDownloader::cleanup,
+                "mvnw-downloader-shutdown"));
+        int exitCode = run(args);
+        if (exitCode != 0) {
+            // Shutdown hook registered above runs and releases resources before the JVM exits
+            System.exit(exitCode);
+        }
+    }
+
+    /**
+     * Run the downloader.
+     *
+     * @param args the args
+     * @return the process exit code
+     */
+    private static int run(String[] args) {
         log("Apache Maven Wrapper Downloader " + WRAPPER_VERSION);
 
         if (args.length != 2) {
             System.err.println(" - ERROR wrapperUrl or wrapperJarPath parameter missing");
-            System.exit(1);
+            return 1;
         }
 
         try {
@@ -67,7 +94,22 @@ public final class MavenWrapperDownloader {
             if (VERBOSE) {
                 e.printStackTrace();
             }
-            System.exit(1);
+            return 1;
+        }
+        return 0;
+    }
+
+    /**
+     * Release resources (delete in-progress temp file) on shutdown.
+     */
+    private static void cleanup() {
+        Path temp = currentTemp;
+        if (temp != null) {
+            try {
+                Files.deleteIfExists(temp);
+            } catch (IOException e) {
+                // ignore during shutdown
+            }
         }
     }
 
@@ -94,14 +136,31 @@ public final class MavenWrapperDownloader {
         Path temp = wrapperJarPath
                 .getParent()
                 .resolve(wrapperJarPath.getFileName() + "."
-                        + Long.toUnsignedString(ThreadLocalRandom.current().nextLong()) + ".tmp");
-        try (InputStream inStream = wrapperUrl.openStream()) {
+                        + UUID.randomUUID() + ".tmp");
+        currentTemp = temp;
+        final URLConnection connection = wrapperUrl.openConnection();
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
+        try (InputStream inStream = connection.getInputStream()) {
             Files.copy(inStream, temp, StandardCopyOption.REPLACE_EXISTING);
             Files.move(temp, wrapperJarPath, StandardCopyOption.REPLACE_EXISTING);
         } finally {
             Files.deleteIfExists(temp);
+            currentTemp = null;
         }
         log(" - Downloader complete");
+    }
+
+    private static int intFromEnv(String name, int defaultValue) {
+        String value = System.getenv(name);
+        if (value != null) {
+            try {
+                return Integer.parseInt(value.trim());
+            } catch (NumberFormatException e) {
+                // fall through to default
+            }
+        }
+        return defaultValue;
     }
 
     /**

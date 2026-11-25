@@ -64,6 +64,19 @@ public class CartController {
   }
 
   /**
+   * Persist the cart to the externalized (Memorystore for Redis) session. In-place mutations of a session attribute are
+   * not tracked by the session repository, so the attribute must be re-set after each modification.
+   *
+   * @param session
+   *          the session
+   * @param cart
+   *          the cart
+   */
+  private void saveCart(HttpSession session, Cart cart) {
+    session.setAttribute("cart", cart);
+  }
+
+  /**
    * View cart.
    *
    * @param session
@@ -106,6 +119,7 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    saveCart(session, cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -131,6 +145,7 @@ public class CartController {
     }
     Cart cart = getCart(session);
     Item item = cart.removeItemById(workingItemId);
+    saveCart(session, cart);
     if (item == null) {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
@@ -168,6 +183,7 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    saveCart(session, cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }

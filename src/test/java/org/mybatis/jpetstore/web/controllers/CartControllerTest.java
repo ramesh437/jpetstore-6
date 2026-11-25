@@ -100,6 +100,8 @@ class CartControllerTest {
     assertThat(cart.containsItemId("EST-1")).isTrue();
     assertThat(cart.getCartItemList().get(0).getQuantity()).isEqualTo(1);
     assertThat(model.asMap().get("cart")).isSameAs(cart);
+    // session state is externalized (Redis-backed): cart must be written back via setAttribute
+    org.mockito.Mockito.verify(session).setAttribute("cart", cart);
   }
 
   /**
@@ -122,6 +124,8 @@ class CartControllerTest {
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.getCartItemList().get(0).getQuantity()).isEqualTo(2);
     org.mockito.Mockito.verifyNoInteractions(catalogService);
+    // session state is externalized (Redis-backed): cart must be written back via setAttribute
+    org.mockito.Mockito.verify(session).setAttribute("cart", cart);
   }
 
   /**
@@ -158,6 +162,8 @@ class CartControllerTest {
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.containsItemId("EST-1")).isFalse();
     assertThat(model.asMap().get("cart")).isSameAs(cart);
+    // session state is externalized (Redis-backed): cart must be written back via setAttribute
+    org.mockito.Mockito.verify(session).setAttribute("cart", cart);
   }
 
   /**
@@ -199,6 +205,8 @@ class CartControllerTest {
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.containsItemId("EST-1")).isTrue();
     assertThat(cart.getCartItemList().get(0).getQuantity()).isEqualTo(3);
+    // session state is externalized (Redis-backed): cart must be written back via setAttribute
+    org.mockito.Mockito.verify(session).setAttribute("cart", cart);
   }
 
   /**
@@ -222,6 +230,8 @@ class CartControllerTest {
 
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.getCartItemList()).isEmpty();
+    // session state is externalized (Redis-backed): cart must be written back via setAttribute
+    org.mockito.Mockito.verify(session).setAttribute("cart", cart);
   }
 
   /**
@@ -245,6 +255,8 @@ class CartControllerTest {
 
     assertThat(view).isEqualTo("cart/Cart");
     assertThat(cart.getCartItemList().get(0).getQuantity()).isEqualTo(1);
+    // session state is externalized (Redis-backed): cart must be written back via setAttribute
+    org.mockito.Mockito.verify(session).setAttribute("cart", cart);
   }
 
   /**

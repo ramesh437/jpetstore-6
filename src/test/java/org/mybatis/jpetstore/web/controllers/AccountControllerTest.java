@@ -92,6 +92,9 @@ class AccountControllerTest {
     String view = accountController.signon("j2ee", "j2ee", session, model);
 
     assertThat(view).isEqualTo("redirect:/catalog");
+    // session state is externalized (Redis-backed), so it must be explicitly written via setAttribute
+    verify(session, times(1)).setAttribute(org.mockito.ArgumentMatchers.eq("accountBean"),
+        org.mockito.ArgumentMatchers.any(AccountController.AccountSession.class));
   }
 
   /**

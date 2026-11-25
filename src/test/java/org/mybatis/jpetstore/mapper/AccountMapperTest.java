@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mybatis.jpetstore.domain.Account;
@@ -83,7 +84,9 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is resolved at runtime (injected from Google Secret Manager, e.g. via the
+    // Spring Cloud GCP "sm://" property source, exposed as env var/system property) instead of being hard-coded.
+    String password = resolveSecret("JPETSTORE_TEST_ACCOUNT_PASSWORD", "jpetstore.test.account.password");
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);
@@ -272,6 +275,42 @@ class AccountMapperTest {
 
     assertThat(recordMap).hasSize(2).containsEntry("USERNAME", account.getUsername()).containsEntry("PASSWORD",
         account.getPassword());
+  }
+
+
+  /**
+   * Resolve a secret value from Google Secret Manager. Resolution order: system property, environment variable
+   * (typically injected from Secret Manager), then a direct Secret Manager lookup using GCP_PROJECT_ID and the secret
+   * name held in the environment variable. No credential is hard-coded in source.
+   *
+   * @param envName
+   *          the environment variable name (also used as the Secret Manager secret id)
+   * @param propertyName
+   *          the system property name
+   *
+   * @return the secret value
+   */
+  private static String resolveSecret(String envName, String propertyName) {
+    String value = System.getProperty(propertyName);
+    if (value == null || value.isEmpty()) {
+      value = System.getenv(envName);
+    }
+    if (value == null || value.isEmpty()) {
+      String projectId = System.getenv("GCP_PROJECT_ID");
+      if (projectId != null && !projectId.isEmpty()) {
+        try (com.google.cloud.secretmanager.v1.SecretManagerServiceClient client = com.google.cloud.secretmanager.v1.SecretManagerServiceClient
+            .create()) {
+          com.google.cloud.secretmanager.v1.SecretVersionName name = com.google.cloud.secretmanager.v1.SecretVersionName
+              .of(projectId, envName, "latest");
+          value = client.accessSecretVersion(name).getPayload().getData().toStringUtf8();
+        } catch (java.io.IOException | RuntimeException e) {
+          value = null;
+        }
+      }
+    }
+    Assumptions.assumeTrue(value != null && !value.isEmpty(),
+        "Secret " + envName + " is not available from Google Secret Manager");
+    return value;
   }
 
 }

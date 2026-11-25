@@ -15,11 +15,13 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.ImmutableList;
 
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
@@ -48,11 +50,20 @@ public class AccountController {
   /** The edit account view. */
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
+  /** Bounded cache (max 8 entries) holding the immutable reference-data lists. */
+  private static final Cache<String, List<String>> REFERENCE_DATA_CACHE = CacheBuilder.newBuilder().maximumSize(8)
+      .build();
+
   /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
+  private static final List<String> LANGUAGE_LIST = referenceList("languages", ImmutableList.of("english", "japanese"));
   /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  private static final List<String> CATEGORY_LIST = referenceList("categories",
+      ImmutableList.of("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+
+  private static List<String> referenceList(String key, List<String> values) {
+    REFERENCE_DATA_CACHE.put(key, values);
+    return values;
+  }
 
   /** The account service. */
   @Autowired
@@ -182,6 +193,9 @@ public class AccountController {
     session.setAttribute("accountBean", new AccountSession(updatedAccount, myList, true));
     return "redirect:/account/edit";
   }
+
+  // NOTE: HttpSession is backed by Memorystore for Redis (Spring Session, see RedisSessionConfig and the
+  // springSessionRepositoryFilter in web.xml), so session state is externalized and instances stay stateless.
 
   /**
    * Inner class to hold account session data, compatible with JSP ${sessionScope.accountBean.*} references.

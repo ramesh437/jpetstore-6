@@ -15,11 +15,13 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.ImmutableList;
 
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Order;
@@ -53,9 +55,18 @@ public class OrderController {
   /** The error view. */
   private static final String ERROR_VIEW = "common/Error";
 
+  /** Bounded cache (max 8 entries) holding the immutable reference-data lists. */
+  private static final Cache<String, List<String>> REFERENCE_DATA_CACHE = CacheBuilder.newBuilder().maximumSize(8)
+      .build();
+
   /** The card type list. */
-  private static final List<String> CARD_TYPE_LIST = Collections
-      .unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
+  private static final List<String> CARD_TYPE_LIST = referenceList("cardTypes",
+      ImmutableList.of("Visa", "MasterCard", "American Express"));
+
+  private static List<String> referenceList(String key, List<String> values) {
+    REFERENCE_DATA_CACHE.put(key, values);
+    return values;
+  }
 
   /** The order service. */
   @Autowired

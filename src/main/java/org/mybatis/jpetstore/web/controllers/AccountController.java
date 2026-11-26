@@ -15,8 +15,6 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
@@ -49,10 +47,9 @@ public class AccountController {
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
   /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
+  private static final List<String> LANGUAGE_LIST = List.of("english", "japanese");
   /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  private static final List<String> CATEGORY_LIST = List.of("FISH", "DOGS", "REPTILES", "CATS", "BIRDS");
 
   /** The account service. */
   @Autowired

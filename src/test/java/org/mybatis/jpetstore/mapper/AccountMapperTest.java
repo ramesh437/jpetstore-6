@@ -76,6 +76,17 @@ class AccountMapperTest {
 
   }
 
+  private String resolveTestPassword(String username) {
+    String secret = System.getenv("JPETSTORE_TEST_ACCOUNT_PASSWORD");
+    if (secret == null || secret.isEmpty()) {
+      secret = System.getProperty("jpetstore.test.account.password");
+    }
+    if (secret == null || secret.isEmpty()) {
+      secret = jdbcTemplate.queryForObject("SELECT password FROM signon WHERE username = ?", String.class, username);
+    }
+    return secret;
+  }
+
   /**
    * Gets the account by username and password.
    */
@@ -83,7 +94,9 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is externalized: injected from AWS Secrets Manager (via environment variable / system property);
+    // when not provided, the seeded test credential is read from the test database instead of being hard-coded.
+    String password = resolveTestPassword(username);
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

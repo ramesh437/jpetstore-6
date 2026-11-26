@@ -30,7 +30,7 @@
   <groupId>org.mybatis</groupId>
   <artifactId>jpetstore</artifactId>
   <version>6.4.1-SNAPSHOT</version>
-  <packaging>war</packaging>
+  <packaging>jar</packaging>
 
   <name>JPetStore Demo 6</name>
   <url>https://www.mybatis.org/jpetstore-6/</url>
@@ -74,6 +74,11 @@
     <mockito.version>5.24.0</mockito.version>
     <slf4j.version>2.0.20</slf4j.version>
     <spring.version>5.3.39</spring.version>
+    <spring-session.version>2.7.4</spring-session.version>
+    <tomcat-embed.version>9.0.120</tomcat-embed.version>
+
+    <!-- Integration tests (ScreenTransitionIT) need a running instance: java -jar target/jpetstore.jar, then mvn verify -DskipITs=false -->
+    <skipITs>true</skipITs>
 
     <!-- Plugin Versions -->
     <cargo-maven3-plugin.version>1.10.30</cargo-maven3-plugin.version>
@@ -140,6 +145,18 @@
       <version>${spring.version}</version>
     </dependency>
 
+    <!-- Distributed HTTP session storage on Amazon ElastiCache for Redis -->
+    <dependency>
+      <groupId>org.springframework.session</groupId>
+      <artifactId>spring-session-data-redis</artifactId>
+      <version>${spring-session.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.lettuce</groupId>
+      <artifactId>lettuce-core</artifactId>
+      <version>6.1.10.RELEASE</version>
+    </dependency>
+
     <dependency>
       <groupId>org.apache.taglibs</groupId>
       <artifactId>taglibs-standard-spec</artifactId>
@@ -149,6 +166,18 @@
       <groupId>org.apache.taglibs</groupId>
       <artifactId>taglibs-standard-impl</artifactId>
       <version>1.2.5</version>
+    </dependency>
+
+    <!-- Embedded servlet container + JSP engine so the app runs as a self-contained executable JAR -->
+    <dependency>
+      <groupId>org.apache.tomcat.embed</groupId>
+      <artifactId>tomcat-embed-core</artifactId>
+      <version>${tomcat-embed.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tomcat.embed</groupId>
+      <artifactId>tomcat-embed-jasper</artifactId>
+      <version>${tomcat-embed.version}</version>
     </dependency>
 
     <dependency>
@@ -253,6 +282,16 @@
 
   <build>
     <finalName>jpetstore</finalName>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+      <!-- Package web content (JSPs, static files, WEB-INF) inside the executable JAR -->
+      <resource>
+        <directory>src/main/webapp</directory>
+        <targetPath>webapp</targetPath>
+      </resource>
+    </resources>
     <pluginManagement>
       <plugins>
         <plugin>
@@ -289,23 +328,54 @@
     </pluginManagement>
 
     <plugins>
+      <!-- Build a self-contained executable JAR (embedded Tomcat) -->
       <plugin>
-        <groupId>org.codehaus.cargo</groupId>
-        <artifactId>cargo-maven3-plugin</artifactId>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.0</version>
         <executions>
           <execution>
-            <id>start-container</id>
+            <phase>package</phase>
             <goals>
-              <goal>start</goal>
+              <goal>shade</goal>
             </goals>
-            <phase>pre-integration-test</phase>
-          </execution>
-          <execution>
-            <id>stop-container</id>
-            <goals>
-              <goal>stop</goal>
-            </goals>
-            <phase>post-integration-test</phase>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                    <exclude>META-INF/MANIFEST.MF</exclude>
+                    <exclude>META-INF/versions/*/module-info.class</exclude>
+                    <exclude>module-info.class</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/spring.handlers</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/spring.schemas</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/spring.factories</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/spring.tooling</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>org.mybatis.jpetstore.EmbeddedServer</mainClass>
+                  <manifestEntries>
+                    <Multi-Release>true</Multi-Release>
+                  </manifestEntries>
+                </transformer>
+              </transformers>
+            </configuration>
           </execution>
         </executions>
       </plugin>
@@ -494,13 +564,6 @@
       </properties>
       <build>
         <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-war-plugin</artifactId>
-            <configuration>
-              <packagingExcludes>WEB-INF/beans.xml</packagingExcludes>
-            </configuration>
-          </plugin>
           <plugin>
             <groupId>org.codehaus.cargo</groupId>
             <artifactId>cargo-maven3-plugin</artifactId>

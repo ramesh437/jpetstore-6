@@ -35,6 +35,11 @@ import org.springframework.ui.Model;
 
 /**
  * The Class CartControllerTest.
+ *
+ * <p>
+ * HTTP session state is externalized to Amazon ElastiCache for Redis via Spring Session; the controllers still use the
+ * standard {@code HttpSession} API, so the session is mocked here and no Redis instance is required.
+ * </p>
  */
 @ExtendWith(MockitoExtension.class)
 class CartControllerTest {

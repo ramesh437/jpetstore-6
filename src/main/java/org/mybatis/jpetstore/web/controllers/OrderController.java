@@ -15,8 +15,6 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
@@ -54,8 +52,7 @@ public class OrderController {
   private static final String ERROR_VIEW = "common/Error";
 
   /** The card type list. */
-  private static final List<String> CARD_TYPE_LIST = Collections
-      .unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
+  private static final List<String> CARD_TYPE_LIST = List.of("Visa", "MasterCard", "American Express");
 
   /** The order service. */
   @Autowired

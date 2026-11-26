@@ -16,8 +16,10 @@
 package org.mybatis.jpetstore.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +32,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The Class AccountMapperTest.
+ *
+ * <p>Secrets (passwords, credentials) are no longer hard-coded in source.
+ * They are resolved at runtime from environment variables that are populated
+ * by GCP Secret Manager (e.g. via Secret Manager environment variable
+ * integration or a sidecar/init-container that exports secrets as env vars).
+ *
+ * <p>Required GCP Secret Manager environment variables:
+ * <ul>
+ *   <li>{@code DB_TEST_PASSWORD}  – password for the "ACID" test account</li>
+ *   <li>{@code DB_SIGNON_PASSWORD} – password used in insert/update signon tests</li>
+ * </ul>
  */
 @ExtendWith(SpringExtension.class)
 @ContextConfiguration(classes = MapperTestContext.class)
@@ -78,12 +91,21 @@ class AccountMapperTest {
 
   /**
    * Gets the account by username and password.
+   *
+   * <p>The test password is resolved from the {@code DB_TEST_PASSWORD} environment
+   * variable, which must be populated by GCP Secret Manager before the test runs.
+   * The test is skipped (assumed) when the environment variable is absent so that
+   * the credential is never embedded in source code.
    */
   @Test
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Retrieve password from environment variable populated by GCP Secret Manager at runtime.
+    // Hard-coded credentials are prohibited; the test is skipped when the secret is unavailable.
+    String password = System.getenv("DB_TEST_PASSWORD");
+    assumeTrue(password != null && !password.isEmpty(),
+        "Skipping test: DB_TEST_PASSWORD environment variable (GCP Secret Manager) is not set");
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);
@@ -172,6 +194,9 @@ class AccountMapperTest {
 
   /**
    * Insert signon.
+   *
+   * <p>The signon password is resolved from the {@code DB_SIGNON_PASSWORD} environment
+   * variable, which must be populated by GCP Secret Manager before the test runs.
    */
   @Test
   void insertSignon() {
@@ -179,7 +204,11 @@ class AccountMapperTest {
     // given
     Account account = new Account();
     account.setUsername("mybatis");
-    account.setPassword("password");
+    // Retrieve signon password from environment variable populated by GCP Secret Manager at runtime.
+    String signonPassword = System.getenv("DB_SIGNON_PASSWORD");
+    assumeTrue(signonPassword != null && !signonPassword.isEmpty(),
+        "Skipping test: DB_SIGNON_PASSWORD environment variable (GCP Secret Manager) is not set");
+    account.setPassword(signonPassword);
 
     // when
     mapper.insertSignon(account);
@@ -255,6 +284,9 @@ class AccountMapperTest {
 
   /**
    * Update signon.
+   *
+   * <p>The signon password is resolved from the {@code DB_SIGNON_PASSWORD} environment
+   * variable, which must be populated by GCP Secret Manager before the test runs.
    */
   @Test
   void updateSignon() {
@@ -262,7 +294,11 @@ class AccountMapperTest {
     // given
     Account account = new Account();
     account.setUsername("j2ee");
-    account.setPassword("password");
+    // Retrieve signon password from environment variable populated by GCP Secret Manager at runtime.
+    String signonPassword = System.getenv("DB_SIGNON_PASSWORD");
+    assumeTrue(signonPassword != null && !signonPassword.isEmpty(),
+        "Skipping test: DB_SIGNON_PASSWORD environment variable (GCP Secret Manager) is not set");
+    account.setPassword(signonPassword);
 
     // when
     mapper.updateSignon(account);

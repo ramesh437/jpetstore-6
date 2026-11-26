@@ -33,11 +33,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.service.AccountService;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.mybatis.jpetstore.session.RedisSessionService;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 
 /**
  * The Class AccountControllerTest.
+ *
+ * <p>Session state is backed by Google Cloud Memorystore for Redis via
+ * {@link RedisSessionService}. Tests mock {@link RedisSessionService} instead
+ * of relying on {@link HttpSession} attribute storage, reflecting the
+ * cloud-native stateless architecture.
  */
 @ExtendWith(MockitoExtension.class)
 class AccountControllerTest {
@@ -48,6 +54,13 @@ class AccountControllerTest {
   /** The catalog service. */
   @Mock
   private CatalogService catalogService;
+  /**
+   * Redis-backed session service mock — replaces direct HttpSession attribute
+   * storage with Google Cloud Memorystore for Redis to support stateless
+   * horizontal scaling.
+   */
+  @Mock
+  private RedisSessionService redisSessionService;
 
   /** The account controller. */
   @InjectMocks
@@ -66,6 +79,7 @@ class AccountControllerTest {
    */
   @Test
   void signonWithInvalidCredentialsReturnsSignonView() {
+    // Use a mock HttpSession to supply a session ID; state is stored in Redis, not in the session itself
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(accountService.getAccount("bad", "bad")).thenReturn(null);
@@ -81,7 +95,9 @@ class AccountControllerTest {
    */
   @Test
   void signonWithValidCredentialsRedirects() {
+    // Use a mock HttpSession to supply a session ID; accountBean is stored in Redis via RedisSessionService
     HttpSession session = mock(HttpSession.class);
+    when(session.getId()).thenReturn("test-session-id");
     Model model = new ExtendedModelMap();
     Account account = new Account();
     account.setUsername("j2ee");
@@ -107,11 +123,17 @@ class AccountControllerTest {
   }
 
   /**
-   * Signoff invalidates session and redirects to catalog.
+   * Signoff invalidates Redis session data and the HTTP session, then redirects to catalog.
+   *
+   * <p>The controller calls {@link RedisSessionService#invalidateSession(String)} to remove
+   * all Redis-backed state before invalidating the local HTTP session, ensuring no orphaned
+   * data remains in Google Cloud Memorystore for Redis.
    */
   @Test
   void signoffInvalidatesSessionAndRedirectsToCatalog() {
+    // Use a mock HttpSession to supply a session ID; Redis state is cleared via RedisSessionService
     HttpSession session = mock(HttpSession.class);
+    when(session.getId()).thenReturn("test-session-id");
 
     String view = accountController.signoff(session);
 
@@ -156,12 +178,17 @@ class AccountControllerTest {
 
   /**
    * Edit account redirects to edit page not catalog.
+   *
+   * <p>The updated accountBean is persisted to Google Cloud Memorystore for Redis
+   * via {@link RedisSessionService} rather than the local HTTP session.
    */
   @Test
   void editAccountRedirectsToEditPageNotCatalog() {
     // After saving account, should redirect to /account/edit so the user stays
     // on their profile page (the IT test expects the edit form to reload).
+    // Use a mock HttpSession to supply a session ID; accountBean is stored in Redis via RedisSessionService
     HttpSession session = mock(HttpSession.class);
+    when(session.getId()).thenReturn("test-session-id");
     Account account = new Account();
     account.setUsername("j2ee");
     account.setFavouriteCategoryId("FISH");
@@ -174,16 +201,23 @@ class AccountControllerTest {
   }
 
   /**
-   * Edit account form with session returns edit account view with account.
+   * Edit account form with Redis session returns edit account view with account.
+   *
+   * <p>The accountBean is retrieved from Google Cloud Memorystore for Redis via
+   * {@link RedisSessionService} rather than the local HTTP session.
    */
   @Test
   void editAccountFormWithSessionReturnsEditAccountViewWithAccount() {
+    // Use a mock HttpSession to supply a session ID; accountBean is retrieved from Redis via RedisSessionService
     HttpSession session = mock(HttpSession.class);
+    when(session.getId()).thenReturn("test-session-id");
     Model model = new ExtendedModelMap();
     Account account = new Account();
     account.setUsername("j2ee");
     AccountController.AccountSession accountSession = new AccountController.AccountSession(account, List.of(), true);
-    when(session.getAttribute("accountBean")).thenReturn(accountSession);
+    // Stub RedisSessionService to return the accountBean for this session ID
+    when(redisSessionService.getAttribute("test-session-id", "accountBean", AccountController.AccountSession.class))
+        .thenReturn(accountSession);
 
     String view = accountController.editAccountForm(session, model);
 
@@ -194,13 +228,20 @@ class AccountControllerTest {
   }
 
   /**
-   * Edit account form without session returns edit account view without account.
+   * Edit account form without Redis session returns edit account view without account.
+   *
+   * <p>When no accountBean exists in Google Cloud Memorystore for Redis for this
+   * session ID, the edit form is still rendered but without a pre-populated account.
    */
   @Test
   void editAccountFormWithoutSessionReturnsEditAccountViewWithoutAccount() {
+    // Use a mock HttpSession to supply a session ID; RedisSessionService returns null (no session data)
     HttpSession session = mock(HttpSession.class);
+    when(session.getId()).thenReturn("test-session-id");
     Model model = new ExtendedModelMap();
-    when(session.getAttribute("accountBean")).thenReturn(null);
+    // Stub RedisSessionService to return null (no accountBean in Redis for this session)
+    when(redisSessionService.getAttribute("test-session-id", "accountBean", AccountController.AccountSession.class))
+        .thenReturn(null);
 
     String view = accountController.editAccountForm(session, model);
 

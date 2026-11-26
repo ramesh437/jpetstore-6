@@ -30,11 +30,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Item;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.mybatis.jpetstore.session.RedisSessionService;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.ui.Model;
 
 /**
  * The Class CartControllerTest.
+ *
+ * <p>Shopping cart state is backed by Google Cloud Memorystore for Redis via
+ * {@link RedisSessionService}. Tests mock {@link RedisSessionService} instead
+ * of relying on {@link HttpSession} attribute storage, reflecting the
+ * cloud-native stateless architecture.
  */
 @ExtendWith(MockitoExtension.class)
 class CartControllerTest {
@@ -42,6 +48,14 @@ class CartControllerTest {
   /** The catalog service. */
   @Mock
   private CatalogService catalogService;
+
+  /**
+   * Redis-backed session service mock — replaces direct HttpSession attribute
+   * storage with Google Cloud Memorystore for Redis to support stateless
+   * horizontal scaling.
+   */
+  @Mock
+  private RedisSessionService redisSessionService;
 
   /** The cart controller. */
   @InjectMocks
@@ -52,9 +66,11 @@ class CartControllerTest {
    */
   @Test
   void viewCartReturnsCartView() {
+    // Use a mock HttpSession to supply a session ID; cart state is stored in Redis, not in the session itself
     HttpSession session = mock(HttpSession.class);
+    when(session.getId()).thenReturn("test-session-id");
     Cart cart = new Cart();
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(redisSessionService.getAttribute("test-session-id", "cart", Cart.class)).thenReturn(cart);
     Model model = new ExtendedModelMap();
 
     String view = cartController.viewCart(session, model);
@@ -82,11 +98,13 @@ class CartControllerTest {
    */
   @Test
   void addItemWithNewIdFetchesItemFromCatalogAndAddsToCart() {
+    // Use a mock HttpSession to supply a session ID; cart is retrieved from Redis via RedisSessionService
     HttpSession session = mock(HttpSession.class);
+    when(session.getId()).thenReturn("test-session-id");
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(redisSessionService.getAttribute("test-session-id", "cart", Cart.class)).thenReturn(cart);
 
     Item item = new Item();
     item.setItemId("EST-1");
@@ -107,7 +125,9 @@ class CartControllerTest {
    */
   @Test
   void addItemWithExistingIdIncrementsQuantityWithoutCallingCatalog() {
+    // Use a mock HttpSession to supply a session ID; cart is retrieved from Redis via RedisSessionService
     HttpSession session = mock(HttpSession.class);
+    when(session.getId()).thenReturn("test-session-id");
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
@@ -115,7 +135,7 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(redisSessionService.getAttribute("test-session-id", "cart", Cart.class)).thenReturn(cart);
 
     String view = cartController.addItemToCart("EST-1", session, model);
 
@@ -143,7 +163,9 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithExistingIdRemovesItemFromCart() {
+    // Use a mock HttpSession to supply a session ID; cart is retrieved from Redis via RedisSessionService
     HttpSession session = mock(HttpSession.class);
+    when(session.getId()).thenReturn("test-session-id");
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
@@ -151,7 +173,7 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(redisSessionService.getAttribute("test-session-id", "cart", Cart.class)).thenReturn(cart);
 
     String view = cartController.removeItemFromCart("EST-1", session, model);
 
@@ -165,11 +187,13 @@ class CartControllerTest {
    */
   @Test
   void removeItemWithNonExistentIdReturnsError() {
+    // Use a mock HttpSession to supply a session ID; cart is retrieved from Redis via RedisSessionService
     HttpSession session = mock(HttpSession.class);
+    when(session.getId()).thenReturn("test-session-id");
     Model model = new ExtendedModelMap();
 
     Cart cart = new Cart();
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(redisSessionService.getAttribute("test-session-id", "cart", Cart.class)).thenReturn(cart);
 
     String view = cartController.removeItemFromCart("NOT-THERE", session, model);
 
@@ -182,7 +206,9 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesUpdatesQuantity() {
+    // Use a mock HttpSession to supply a session ID; cart is retrieved from Redis via RedisSessionService
     HttpSession session = mock(HttpSession.class);
+    when(session.getId()).thenReturn("test-session-id");
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -191,7 +217,7 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(redisSessionService.getAttribute("test-session-id", "cart", Cart.class)).thenReturn(cart);
     when(request.getParameter("EST-1")).thenReturn("3");
 
     String view = cartController.updateCartQuantities(request, session, model);
@@ -206,7 +232,9 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesRemovesItemWhenQuantityLessThanOne() {
+    // Use a mock HttpSession to supply a session ID; cart is retrieved from Redis via RedisSessionService
     HttpSession session = mock(HttpSession.class);
+    when(session.getId()).thenReturn("test-session-id");
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -215,7 +243,7 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(redisSessionService.getAttribute("test-session-id", "cart", Cart.class)).thenReturn(cart);
     when(request.getParameter("EST-1")).thenReturn("0");
 
     String view = cartController.updateCartQuantities(request, session, model);
@@ -229,7 +257,9 @@ class CartControllerTest {
    */
   @Test
   void updateCartQuantitiesIgnoresInvalidNumericInput() {
+    // Use a mock HttpSession to supply a session ID; cart is retrieved from Redis via RedisSessionService
     HttpSession session = mock(HttpSession.class);
+    when(session.getId()).thenReturn("test-session-id");
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
 
@@ -238,7 +268,7 @@ class CartControllerTest {
     item.setItemId("EST-1");
     item.setListPrice(new java.math.BigDecimal("10.00"));
     cart.addItem(item, true);
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(redisSessionService.getAttribute("test-session-id", "cart", Cart.class)).thenReturn(cart);
     when(request.getParameter("EST-1")).thenReturn("not-a-number");
 
     String view = cartController.updateCartQuantities(request, session, model);
@@ -252,9 +282,11 @@ class CartControllerTest {
    */
   @Test
   void checkOutReturnsCheckoutViewWithCartFromSession() {
+    // Use a mock HttpSession to supply a session ID; cart is retrieved from Redis via RedisSessionService
     HttpSession session = mock(HttpSession.class);
+    when(session.getId()).thenReturn("test-session-id");
     Cart cart = new Cart();
-    when(session.getAttribute("cart")).thenReturn(cart);
+    when(redisSessionService.getAttribute("test-session-id", "cart", Cart.class)).thenReturn(cart);
     Model model = new ExtendedModelMap();
 
     String view = cartController.checkOut(session, model);
@@ -264,19 +296,28 @@ class CartControllerTest {
   }
 
   /**
-   * Check out with no existing cart creates new cart in session.
+   * Check out with no existing cart creates new cart and persists it to Redis.
+   *
+   * <p>When no cart exists in Google Cloud Memorystore for Redis for this session,
+   * a new empty cart is created and persisted to Redis via {@link RedisSessionService}
+   * so that all application instances share the same cart state.
    */
   @Test
   void checkOutWithNoExistingCartCreatesNewCartInSession() {
+    // Use a mock HttpSession to supply a session ID; RedisSessionService returns null (no cart in Redis)
     HttpSession session = mock(HttpSession.class);
-    when(session.getAttribute("cart")).thenReturn(null);
+    when(session.getId()).thenReturn("test-session-id");
+    when(redisSessionService.getAttribute("test-session-id", "cart", Cart.class)).thenReturn(null);
     Model model = new ExtendedModelMap();
 
     String view = cartController.checkOut(session, model);
 
     assertThat(view).isEqualTo("cart/Checkout");
     assertThat(model.asMap().get("cart")).isInstanceOf(Cart.class);
-    org.mockito.Mockito.verify(session).setAttribute(org.mockito.ArgumentMatchers.eq("cart"),
+    // Verify the new cart was persisted to Redis (Memorystore) instead of the local HTTP session
+    org.mockito.Mockito.verify(redisSessionService).setAttribute(
+        org.mockito.ArgumentMatchers.eq("test-session-id"),
+        org.mockito.ArgumentMatchers.eq("cart"),
         org.mockito.ArgumentMatchers.any(Cart.class));
   }
 }

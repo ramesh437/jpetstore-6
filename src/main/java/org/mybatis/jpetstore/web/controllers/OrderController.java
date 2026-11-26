@@ -15,8 +15,6 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
@@ -24,6 +22,7 @@ import javax.servlet.http.HttpSession;
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Order;
 import org.mybatis.jpetstore.service.OrderService;
+import org.mybatis.jpetstore.session.RedisSessionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -33,8 +32,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.google.common.collect.ImmutableList;
+
 /**
  * The Class OrderController.
+ *
+ * <p>Order and cart session state is stored in Google Cloud Memorystore for Redis
+ * via {@link RedisSessionService}, enabling stateless, horizontally-scalable
+ * application instances without server affinity.
  */
 @Controller
 @RequestMapping("/order")
@@ -53,13 +58,31 @@ public class OrderController {
   /** The error view. */
   private static final String ERROR_VIEW = "common/Error";
 
-  /** The card type list. */
-  private static final List<String> CARD_TYPE_LIST = Collections
-      .unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
+  /** Redis key name for the account session attribute. */
+  private static final String ACCOUNT_BEAN_KEY = "accountBean";
+
+  /** Redis key name for the cart session attribute. */
+  private static final String CART_KEY = "cart";
+
+  /** Redis key name for the order session attribute. */
+  private static final String ORDER_KEY = "order";
+
+  /**
+   * The card type list. Bounded, immutable collection using Guava ImmutableList to prevent
+   * unbounded memory growth in GKE containers with strict memory limits.
+   */
+  private static final ImmutableList<String> CARD_TYPE_LIST = ImmutableList.of("Visa", "MasterCard", "American Express");
 
   /** The order service. */
   @Autowired
   private OrderService orderService;
+
+  /**
+   * Redis-backed session service — replaces direct HttpSession attribute storage
+   * with Google Cloud Memorystore for Redis to support stateless horizontal scaling.
+   */
+  @Autowired
+  private RedisSessionService redisSessionService;
 
   /**
    * List orders.
@@ -73,8 +96,9 @@ public class OrderController {
    */
   @GetMapping("/list")
   public String listOrders(HttpSession session, Model model) {
-    AccountController.AccountSession accountSession = (AccountController.AccountSession) session
-        .getAttribute("accountBean");
+    // Retrieve accountBean from Redis (Memorystore) instead of local HTTP session
+    AccountController.AccountSession accountSession = redisSessionService.getAttribute(
+        session.getId(), ACCOUNT_BEAN_KEY, AccountController.AccountSession.class);
     if (accountSession == null || !accountSession.isAuthenticated()) {
       model.addAttribute("message",
           "You must sign on before attempting to check out. Please sign on and try checking out again.");
@@ -97,9 +121,11 @@ public class OrderController {
    */
   @GetMapping("/new")
   public String newOrderForm(HttpSession session, Model model) {
-    AccountController.AccountSession accountSession = (AccountController.AccountSession) session
-        .getAttribute("accountBean");
-    Cart cart = (Cart) session.getAttribute("cart");
+    // Retrieve accountBean from Redis (Memorystore) instead of local HTTP session
+    AccountController.AccountSession accountSession = redisSessionService.getAttribute(
+        session.getId(), ACCOUNT_BEAN_KEY, AccountController.AccountSession.class);
+    // Retrieve cart from Redis (Memorystore) instead of local HTTP session
+    Cart cart = redisSessionService.getAttribute(session.getId(), CART_KEY, Cart.class);
 
     if (accountSession == null || !accountSession.isAuthenticated()) {
       model.addAttribute("message",
@@ -109,7 +135,8 @@ public class OrderController {
     if (cart != null) {
       Order order = new Order();
       order.initOrder(accountSession.getAccount(), cart);
-      session.setAttribute("order", order);
+      // Persist order to Redis (Memorystore) instead of local HTTP session
+      redisSessionService.setAttribute(session.getId(), ORDER_KEY, order);
       model.addAttribute("order", order);
       model.addAttribute("creditCardTypes", CARD_TYPE_LIST);
       return NEW_ORDER_VIEW;
@@ -139,14 +166,16 @@ public class OrderController {
       @RequestParam(value = "shippingAddressRequired", defaultValue = "false") boolean shippingAddressRequired,
       @RequestParam(value = "confirmed", defaultValue = "false") boolean confirmed, HttpSession session, Model model) {
 
-    Order sessionOrder = (Order) session.getAttribute("order");
+    // Retrieve order from Redis (Memorystore) instead of local HTTP session
+    Order sessionOrder = redisSessionService.getAttribute(session.getId(), ORDER_KEY, Order.class);
 
     // When confirming, use the session order directly - the confirm form only
     // submits confirmed=true with no other fields, so @ModelAttribute Order is empty
     if (confirmed) {
       if (sessionOrder != null) {
         orderService.insertOrder(sessionOrder);
-        session.setAttribute("cart", new Cart());
+        // Reset cart in Redis (Memorystore) to an empty cart after order submission
+        redisSessionService.setAttribute(session.getId(), CART_KEY, new Cart());
         model.addAttribute("message", "Thank you, your order has been submitted.");
         model.addAttribute("order", sessionOrder);
         return VIEW_ORDER_VIEW;
@@ -196,11 +225,13 @@ public class OrderController {
     }
 
     if (shippingAddressRequired) {
-      session.setAttribute("order", order);
+      // Persist updated order to Redis (Memorystore) instead of local HTTP session
+      redisSessionService.setAttribute(session.getId(), ORDER_KEY, order);
       model.addAttribute("order", order);
       return SHIPPING_VIEW;
     } else {
-      session.setAttribute("order", order);
+      // Persist updated order to Redis (Memorystore) instead of local HTTP session
+      redisSessionService.setAttribute(session.getId(), ORDER_KEY, order);
       model.addAttribute("order", order);
       return CONFIRM_VIEW;
     }
@@ -220,8 +251,9 @@ public class OrderController {
    */
   @GetMapping("/view")
   public String viewOrder(@RequestParam("orderId") int orderId, HttpSession session, Model model) {
-    AccountController.AccountSession accountSession = (AccountController.AccountSession) session
-        .getAttribute("accountBean");
+    // Retrieve accountBean from Redis (Memorystore) instead of local HTTP session
+    AccountController.AccountSession accountSession = redisSessionService.getAttribute(
+        session.getId(), ACCOUNT_BEAN_KEY, AccountController.AccountSession.class);
     if (accountSession == null || !accountSession.isAuthenticated()) {
       return "redirect:/account";
     }

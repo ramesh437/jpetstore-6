@@ -24,6 +24,7 @@ import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.CartItem;
 import org.mybatis.jpetstore.domain.Item;
 import org.mybatis.jpetstore.service.CatalogService;
+import org.mybatis.jpetstore.session.RedisSessionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -34,6 +35,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * The Class CartController.
+ *
+ * <p>Shopping cart state is stored in Google Cloud Memorystore for Redis via
+ * {@link RedisSessionService}, enabling stateless, horizontally-scalable
+ * application instances without server affinity.
  */
 @Controller
 @RequestMapping("/cart")
@@ -42,35 +47,56 @@ public class CartController {
   /** The error view. */
   private static final String ERROR_VIEW = "common/Error";
 
+  /** Redis key name for the cart session attribute. */
+  private static final String CART_KEY = "cart";
+
   /** The catalog service. */
   @Autowired
   private CatalogService catalogService;
 
   /**
-   * Get cart.
+   * Redis-backed session service — replaces direct HttpSession attribute storage
+   * with Google Cloud Memorystore for Redis to support stateless horizontal scaling.
+   */
+  @Autowired
+  private RedisSessionService redisSessionService;
+
+  /**
+   * Retrieves the {@link Cart} for the given session from Google Cloud
+   * Memorystore for Redis. If no cart exists yet, a new empty cart is created
+   * and immediately persisted to Redis so that all application instances share
+   * the same cart state.
    *
-   * @param session
-   *          the session
-   *
-   * @return the cart
+   * @param session the HTTP session (used only to obtain the session ID)
+   * @return the cart associated with this session
    */
   private Cart getCart(HttpSession session) {
-    Cart cart = (Cart) session.getAttribute("cart");
+    Cart cart = redisSessionService.getAttribute(session.getId(), CART_KEY, Cart.class);
     if (cart == null) {
       cart = new Cart();
-      session.setAttribute("cart", cart);
+      // Persist new empty cart to Redis (Memorystore) instead of local HTTP session
+      redisSessionService.setAttribute(session.getId(), CART_KEY, cart);
     }
     return cart;
   }
 
   /**
+   * Persists the {@link Cart} back to Google Cloud Memorystore for Redis after
+   * any mutation so that the updated state is visible to all application instances.
+   *
+   * @param session the HTTP session (used only to obtain the session ID)
+   * @param cart    the cart to persist
+   */
+  private void saveCart(HttpSession session, Cart cart) {
+    // Write updated cart back to Redis (Memorystore) to propagate changes across instances
+    redisSessionService.setAttribute(session.getId(), CART_KEY, cart);
+  }
+
+  /**
    * View cart.
    *
-   * @param session
-   *          the session
-   * @param model
-   *          the model
-   *
+   * @param session the HTTP session
+   * @param model   the model
    * @return the string
    */
   @GetMapping({ "", "/" })
@@ -82,13 +108,9 @@ public class CartController {
   /**
    * Add item to cart.
    *
-   * @param workingItemId
-   *          the working item id
-   * @param session
-   *          the session
-   * @param model
-   *          the model
-   *
+   * @param workingItemId the working item id
+   * @param session       the HTTP session
+   * @param model         the model
    * @return the string
    */
   @GetMapping("/addItem")
@@ -106,6 +128,8 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    // Persist mutated cart back to Redis (Memorystore)
+    saveCart(session, cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -113,13 +137,9 @@ public class CartController {
   /**
    * Remove item from cart.
    *
-   * @param workingItemId
-   *          the working item id
-   * @param session
-   *          the session
-   * @param model
-   *          the model
-   *
+   * @param workingItemId the working item id
+   * @param session       the HTTP session
+   * @param model         the model
    * @return the string
    */
   @GetMapping("/removeItem")
@@ -135,6 +155,8 @@ public class CartController {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
     }
+    // Persist mutated cart back to Redis (Memorystore)
+    saveCart(session, cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -142,13 +164,9 @@ public class CartController {
   /**
    * Update cart quantities.
    *
-   * @param request
-   *          the request
-   * @param session
-   *          the session
-   * @param model
-   *          the model
-   *
+   * @param request the request
+   * @param session the HTTP session
+   * @param model   the model
    * @return the string
    */
   @PostMapping("/update")
@@ -168,6 +186,8 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    // Persist mutated cart back to Redis (Memorystore)
+    saveCart(session, cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -175,11 +195,8 @@ public class CartController {
   /**
    * Check out.
    *
-   * @param session
-   *          the session
-   * @param model
-   *          the model
-   *
+   * @param session the HTTP session
+   * @param model   the model
    * @return the string
    */
   @GetMapping("/checkout")

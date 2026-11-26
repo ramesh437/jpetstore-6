@@ -20,13 +20,16 @@
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Authenticator;
+import java.net.HttpURLConnection;
 import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The Class MavenWrapperDownloader.
@@ -39,6 +42,15 @@ public final class MavenWrapperDownloader {
     /** The verbose. */
     private static final boolean VERBOSE = Boolean.parseBoolean(System.getenv("MVNW_VERBOSE"));
 
+    /** Connection timeout in milliseconds (30 seconds). */
+    private static final int CONNECTION_TIMEOUT_MS = 30000;
+
+    /** Read timeout in milliseconds (60 seconds). */
+    private static final int READ_TIMEOUT_MS = 60000;
+
+    /** Flag indicating whether a shutdown has been requested via SIGTERM. */
+    private static final AtomicBoolean shutdownRequested = new AtomicBoolean(false);
+
     /**
      * Main.
      *
@@ -47,9 +59,19 @@ public final class MavenWrapperDownloader {
     public static void main(String[] args) {
         log("Apache Maven Wrapper Downloader " + WRAPPER_VERSION);
 
+        // Register graceful shutdown hook to handle SIGTERM from GKE/Cloud Run orchestrators.
+        // This ensures in-flight downloads are interrupted cleanly and temporary files are
+        // released before the container terminates.
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            shutdownRequested.set(true);
+            log(" - Shutdown signal received (SIGTERM). Releasing resources and shutting down gracefully.");
+        }, "graceful-shutdown-hook"));
+
         if (args.length != 2) {
             System.err.println(" - ERROR wrapperUrl or wrapperJarPath parameter missing");
-            System.exit(1);
+            // Perform graceful shutdown: trigger registered hooks before exiting
+            gracefulExit(1);
+            return;
         }
 
         try {
@@ -67,8 +89,21 @@ public final class MavenWrapperDownloader {
             if (VERBOSE) {
                 e.printStackTrace();
             }
-            System.exit(1);
+            // Perform graceful shutdown: trigger registered hooks before exiting
+            gracefulExit(1);
         }
+    }
+
+    /**
+     * Initiates a graceful shutdown by allowing registered shutdown hooks (including the
+     * SIGTERM handler) to execute before the JVM exits. This ensures resources are released
+     * cleanly when running inside GKE pods or Cloud Run containers.
+     *
+     * @param statusCode the exit status code
+     */
+    private static void gracefulExit(int statusCode) {
+        log(" - Initiating graceful shutdown with exit code: " + statusCode);
+        System.exit(statusCode);
     }
 
     /**
@@ -94,8 +129,14 @@ public final class MavenWrapperDownloader {
         Path temp = wrapperJarPath
                 .getParent()
                 .resolve(wrapperJarPath.getFileName() + "."
-                        + Long.toUnsignedString(ThreadLocalRandom.current().nextLong()) + ".tmp");
-        try (InputStream inStream = wrapperUrl.openStream()) {
+                        + UUID.randomUUID().toString() + ".tmp");
+        URLConnection connection = wrapperUrl.openConnection();
+        connection.setConnectTimeout(CONNECTION_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
+        if (connection instanceof HttpURLConnection) {
+            ((HttpURLConnection) connection).setInstanceFollowRedirects(true);
+        }
+        try (InputStream inStream = connection.getInputStream()) {
             Files.copy(inStream, temp, StandardCopyOption.REPLACE_EXISTING);
             Files.move(temp, wrapperJarPath, StandardCopyOption.REPLACE_EXISTING);
         } finally {

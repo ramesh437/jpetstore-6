@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mybatis.jpetstore.domain.Account;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -43,6 +44,10 @@ class AccountMapperTest {
   /** The jdbc template. */
   @Autowired
   private JdbcTemplate jdbcTemplate;
+
+  /** The environment used to resolve externalized (Secret Manager backed) credentials. */
+  @Autowired
+  private Environment environment;
 
   /**
    * Gets the account by username.
@@ -83,7 +88,9 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    // Credential is resolved from the Spring Environment (env var / system property, populated from Google Secret
+    // Manager, e.g. sm://jpetstore-test-account-password); the default only matches the embedded HSQLDB test fixture.
+    String password = environment.getProperty("JPETSTORE_TEST_ACCOUNT_PASSWORD", "ACID");
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);

@@ -38,6 +38,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 @RequestMapping("/cart")
 public class CartController {
+  // NOTE: HttpSession is backed by Google Cloud Memorystore for Redis (Spring Session), so no
+  // state is held in the servlet container's memory. Mutated session objects must be re-set.
 
   /** The error view. */
   private static final String ERROR_VIEW = "common/Error";
@@ -106,6 +108,8 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    // Re-publish so the Redis-backed (Memorystore) session persists the mutated cart
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -135,6 +139,8 @@ public class CartController {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
     }
+    // Re-publish so the Redis-backed (Memorystore) session persists the mutated cart
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -168,6 +174,8 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    // Re-publish so the Redis-backed (Memorystore) session persists the mutated cart
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }

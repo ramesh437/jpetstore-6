@@ -15,11 +15,11 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.collect.ImmutableList;
 
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Order;
@@ -35,6 +35,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * The Class OrderController.
+ *
+ * <p>Session state (order, cart) is stored via {@link HttpSession}, which is transparently
+ * backed by Google Cloud Memorystore for Redis through Spring Session
+ * ({@code @EnableRedisHttpSession} in {@code RedisHttpSessionConfig}).
+ * This enables stateless, horizontally-scalable deployments on GCP without server affinity.
+ * Session data survives instance restarts and is shared across all application instances
+ * behind a load balancer.
  */
 @Controller
 @RequestMapping("/order")
@@ -54,8 +61,7 @@ public class OrderController {
   private static final String ERROR_VIEW = "common/Error";
 
   /** The card type list. */
-  private static final List<String> CARD_TYPE_LIST = Collections
-      .unmodifiableList(Arrays.asList("Visa", "MasterCard", "American Express"));
+  private static final List<String> CARD_TYPE_LIST = ImmutableList.of("Visa", "MasterCard", "American Express");
 
   /** The order service. */
   @Autowired
@@ -64,8 +70,12 @@ public class OrderController {
   /**
    * List orders.
    *
+   * <p>Retrieves the account session from the Redis-backed {@link HttpSession}.
+   * The session is stored in GCP Memorystore for Redis via Spring Session,
+   * ensuring consistent session state across all application instances.
+   *
    * @param session
-   *          the session
+   *          the session (Redis-backed via Spring Session / GCP Memorystore)
    * @param model
    *          the model
    *
@@ -73,6 +83,7 @@ public class OrderController {
    */
   @GetMapping("/list")
   public String listOrders(HttpSession session, Model model) {
+    // Session attribute retrieved from GCP Memorystore for Redis via Spring Session
     AccountController.AccountSession accountSession = (AccountController.AccountSession) session
         .getAttribute("accountBean");
     if (accountSession == null || !accountSession.isAuthenticated()) {
@@ -88,8 +99,12 @@ public class OrderController {
   /**
    * New order form.
    *
+   * <p>Reads account and cart state from the Redis-backed {@link HttpSession} and stores
+   * the newly created order back into the session. The session is backed by
+   * GCP Memorystore for Redis via Spring Session, enabling stateless horizontal scaling.
+   *
    * @param session
-   *          the session
+   *          the session (Redis-backed via Spring Session / GCP Memorystore)
    * @param model
    *          the model
    *
@@ -97,6 +112,7 @@ public class OrderController {
    */
   @GetMapping("/new")
   public String newOrderForm(HttpSession session, Model model) {
+    // Session attributes retrieved from GCP Memorystore for Redis via Spring Session
     AccountController.AccountSession accountSession = (AccountController.AccountSession) session
         .getAttribute("accountBean");
     Cart cart = (Cart) session.getAttribute("cart");
@@ -109,6 +125,7 @@ public class OrderController {
     if (cart != null) {
       Order order = new Order();
       order.initOrder(accountSession.getAccount(), cart);
+      // Order stored in GCP Memorystore for Redis via Spring Session
       session.setAttribute("order", order);
       model.addAttribute("order", order);
       model.addAttribute("creditCardTypes", CARD_TYPE_LIST);
@@ -121,6 +138,11 @@ public class OrderController {
   /**
    * New order.
    *
+   * <p>Reads and updates order state in the Redis-backed {@link HttpSession}.
+   * The session is backed by GCP Memorystore for Redis via Spring Session,
+   * ensuring order state is preserved across requests even when load-balanced
+   * across multiple application instances.
+   *
    * @param order
    *          the order
    * @param shippingAddressRequired
@@ -128,7 +150,7 @@ public class OrderController {
    * @param confirmed
    *          the confirmed
    * @param session
-   *          the session
+   *          the session (Redis-backed via Spring Session / GCP Memorystore)
    * @param model
    *          the model
    *
@@ -139,6 +161,7 @@ public class OrderController {
       @RequestParam(value = "shippingAddressRequired", defaultValue = "false") boolean shippingAddressRequired,
       @RequestParam(value = "confirmed", defaultValue = "false") boolean confirmed, HttpSession session, Model model) {
 
+    // Order retrieved from GCP Memorystore for Redis via Spring Session
     Order sessionOrder = (Order) session.getAttribute("order");
 
     // When confirming, use the session order directly - the confirm form only
@@ -146,6 +169,7 @@ public class OrderController {
     if (confirmed) {
       if (sessionOrder != null) {
         orderService.insertOrder(sessionOrder);
+        // Reset cart in GCP Memorystore for Redis via Spring Session
         session.setAttribute("cart", new Cart());
         model.addAttribute("message", "Thank you, your order has been submitted.");
         model.addAttribute("order", sessionOrder);
@@ -196,10 +220,12 @@ public class OrderController {
     }
 
     if (shippingAddressRequired) {
+      // Order stored in GCP Memorystore for Redis via Spring Session
       session.setAttribute("order", order);
       model.addAttribute("order", order);
       return SHIPPING_VIEW;
     } else {
+      // Order stored in GCP Memorystore for Redis via Spring Session
       session.setAttribute("order", order);
       model.addAttribute("order", order);
       return CONFIRM_VIEW;
@@ -209,10 +235,13 @@ public class OrderController {
   /**
    * View order.
    *
+   * <p>Retrieves the account session from the Redis-backed {@link HttpSession} to
+   * verify the user is authenticated and authorized to view the requested order.
+   *
    * @param orderId
    *          the order id
    * @param session
-   *          the session
+   *          the session (Redis-backed via Spring Session / GCP Memorystore)
    * @param model
    *          the model
    *
@@ -220,6 +249,7 @@ public class OrderController {
    */
   @GetMapping("/view")
   public String viewOrder(@RequestParam("orderId") int orderId, HttpSession session, Model model) {
+    // Session attribute retrieved from GCP Memorystore for Redis via Spring Session
     AccountController.AccountSession accountSession = (AccountController.AccountSession) session
         .getAttribute("accountBean");
     if (accountSession == null || !accountSession.isAuthenticated()) {

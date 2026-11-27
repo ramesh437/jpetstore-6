@@ -35,6 +35,12 @@ import org.springframework.ui.Model;
 
 /**
  * The Class CartControllerTest.
+ *
+ * <p>Unit tests for {@link CartController}. The {@link HttpSession} is mocked in these
+ * tests to simulate the Redis-backed session store (GCP Memorystore for Redis via Spring Session).
+ * In production, Spring Session transparently replaces the standard {@link HttpSession}
+ * implementation with a Redis-backed one, so controller code using {@code session.getAttribute()}
+ * and {@code session.setAttribute()} works identically whether backed by in-memory or Redis storage.
  */
 @ExtendWith(MockitoExtension.class)
 class CartControllerTest {
@@ -49,9 +55,14 @@ class CartControllerTest {
 
   /**
    * View cart returns cart view.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). The {@code cart} attribute
+   * is retrieved from GCP Memorystore for Redis in production.
    */
   @Test
   void viewCartReturnsCartView() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Cart cart = new Cart();
     when(session.getAttribute("cart")).thenReturn(cart);
@@ -65,9 +76,13 @@ class CartControllerTest {
 
   /**
    * Add item with null id returns error.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session).
    */
   @Test
   void addItemWithNullIdReturnsError() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -79,9 +94,14 @@ class CartControllerTest {
 
   /**
    * Add item with new id fetches item from catalog and adds to cart.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). In production, the
+   * {@code cart} attribute is stored in GCP Memorystore for Redis.
    */
   @Test
   void addItemWithNewIdFetchesItemFromCatalogAndAddsToCart() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -104,9 +124,14 @@ class CartControllerTest {
 
   /**
    * Add item with existing id increments quantity without calling catalog.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). In production, the
+   * updated {@code cart} attribute is stored in GCP Memorystore for Redis.
    */
   @Test
   void addItemWithExistingIdIncrementsQuantityWithoutCallingCatalog() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -126,9 +151,13 @@ class CartControllerTest {
 
   /**
    * Remove item with null id returns error.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session).
    */
   @Test
   void removeItemWithNullIdReturnsError() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -140,9 +169,14 @@ class CartControllerTest {
 
   /**
    * Remove item with existing id removes item from cart.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). In production, the
+   * updated {@code cart} attribute is stored in GCP Memorystore for Redis.
    */
   @Test
   void removeItemWithExistingIdRemovesItemFromCart() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -162,9 +196,14 @@ class CartControllerTest {
 
   /**
    * Remove item with non existent id returns error.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). A null return from
+   * {@code session.getAttribute("cart")} indicates no active cart in Redis.
    */
   @Test
   void removeItemWithNonExistentIdReturnsError() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -179,9 +218,14 @@ class CartControllerTest {
 
   /**
    * Update cart quantities updates quantity.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). In production, the
+   * updated {@code cart} attribute is stored in GCP Memorystore for Redis.
    */
   @Test
   void updateCartQuantitiesUpdatesQuantity() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
@@ -203,9 +247,14 @@ class CartControllerTest {
 
   /**
    * Update cart quantities removes item when quantity less than one.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). In production, the
+   * updated {@code cart} attribute is stored in GCP Memorystore for Redis.
    */
   @Test
   void updateCartQuantitiesRemovesItemWhenQuantityLessThanOne() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
@@ -226,9 +275,14 @@ class CartControllerTest {
 
   /**
    * Update cart quantities ignores invalid numeric input.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). In production, the
+   * {@code cart} attribute is stored in GCP Memorystore for Redis.
    */
   @Test
   void updateCartQuantitiesIgnoresInvalidNumericInput() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     HttpServletRequest request = mock(HttpServletRequest.class);
     Model model = new ExtendedModelMap();
@@ -249,9 +303,14 @@ class CartControllerTest {
 
   /**
    * Check out returns checkout view with cart from session.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). The {@code cart} attribute
+   * is retrieved from GCP Memorystore for Redis in production.
    */
   @Test
   void checkOutReturnsCheckoutViewWithCartFromSession() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Cart cart = new Cart();
     when(session.getAttribute("cart")).thenReturn(cart);
@@ -265,9 +324,15 @@ class CartControllerTest {
 
   /**
    * Check out with no existing cart creates new cart in session.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). Calling
+   * {@code session.setAttribute("cart", ...)} stores the new cart in
+   * GCP Memorystore for Redis in production.
    */
   @Test
   void checkOutWithNoExistingCartCreatesNewCartInSession() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     when(session.getAttribute("cart")).thenReturn(null);
     Model model = new ExtendedModelMap();

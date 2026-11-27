@@ -15,11 +15,11 @@
  */
 package org.mybatis.jpetstore.web.controllers;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.http.HttpSession;
+
+import com.google.common.collect.ImmutableList;
 
 import org.mybatis.jpetstore.domain.Account;
 import org.mybatis.jpetstore.domain.Product;
@@ -36,6 +36,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * The Class AccountController.
+ *
+ * <p>Session state (accountBean) is stored via {@link HttpSession}, which is transparently
+ * backed by Google Cloud Memorystore for Redis through Spring Session
+ * ({@code @EnableRedisHttpSession} in {@code RedisHttpSessionConfig}).
+ * This enables stateless, horizontally-scalable deployments on GCP without server affinity.
  */
 @Controller
 @RequestMapping("/account")
@@ -49,10 +54,9 @@ public class AccountController {
   private static final String EDIT_ACCOUNT_VIEW = "account/EditAccountForm";
 
   /** The language list. */
-  private static final List<String> LANGUAGE_LIST = Collections.unmodifiableList(Arrays.asList("english", "japanese"));
+  private static final List<String> LANGUAGE_LIST = ImmutableList.of("english", "japanese");
   /** The category list. */
-  private static final List<String> CATEGORY_LIST = Collections
-      .unmodifiableList(Arrays.asList("FISH", "DOGS", "REPTILES", "CATS", "BIRDS"));
+  private static final List<String> CATEGORY_LIST = ImmutableList.of("FISH", "DOGS", "REPTILES", "CATS", "BIRDS");
 
   /** The account service. */
   @Autowired
@@ -74,12 +78,16 @@ public class AccountController {
   /**
    * Signon.
    *
+   * <p>Stores account session data in {@link HttpSession}. The session is backed by
+   * GCP Memorystore for Redis via Spring Session, ensuring the session survives
+   * instance restarts and load balancing across multiple application instances.
+   *
    * @param username
    *          the username
    * @param password
    *          the password
    * @param session
-   *          the session
+   *          the session (Redis-backed via Spring Session / GCP Memorystore)
    * @param model
    *          the model
    *
@@ -95,6 +103,7 @@ public class AccountController {
     }
     account.setPassword(null);
     List<Product> myList = catalogService.getProductListByCategory(account.getFavouriteCategoryId());
+    // Session attribute stored in GCP Memorystore for Redis via Spring Session
     session.setAttribute("accountBean", new AccountSession(account, myList, true));
     return "redirect:/catalog";
   }
@@ -102,8 +111,11 @@ public class AccountController {
   /**
    * Signoff.
    *
+   * <p>Invalidates the Redis-backed session, removing all session data from
+   * GCP Memorystore for Redis.
+   *
    * @param session
-   *          the session
+   *          the session (Redis-backed via Spring Session / GCP Memorystore)
    *
    * @return the string
    */
@@ -146,8 +158,10 @@ public class AccountController {
   /**
    * Edit account form.
    *
+   * <p>Retrieves account session data from the Redis-backed {@link HttpSession}.
+   *
    * @param session
-   *          the session
+   *          the session (Redis-backed via Spring Session / GCP Memorystore)
    * @param model
    *          the model
    *
@@ -155,6 +169,7 @@ public class AccountController {
    */
   @GetMapping("/edit")
   public String editAccountForm(HttpSession session, Model model) {
+    // Session attribute retrieved from GCP Memorystore for Redis via Spring Session
     AccountSession accountSession = (AccountSession) session.getAttribute("accountBean");
     if (accountSession != null) {
       model.addAttribute("account", accountSession.getAccount());
@@ -167,10 +182,12 @@ public class AccountController {
   /**
    * Edit account.
    *
+   * <p>Updates account session data in the Redis-backed {@link HttpSession}.
+   *
    * @param account
    *          the account
    * @param session
-   *          the session
+   *          the session (Redis-backed via Spring Session / GCP Memorystore)
    *
    * @return the string
    */
@@ -179,12 +196,16 @@ public class AccountController {
     accountService.updateAccount(account);
     Account updatedAccount = accountService.getAccount(account.getUsername());
     List<Product> myList = catalogService.getProductListByCategory(updatedAccount.getFavouriteCategoryId());
+    // Session attribute updated in GCP Memorystore for Redis via Spring Session
     session.setAttribute("accountBean", new AccountSession(updatedAccount, myList, true));
     return "redirect:/account/edit";
   }
 
   /**
    * Inner class to hold account session data, compatible with JSP ${sessionScope.accountBean.*} references.
+   *
+   * <p>Implements {@link java.io.Serializable} as required for Redis serialization when stored
+   * in GCP Memorystore for Redis via Spring Session.
    */
   public static class AccountSession implements java.io.Serializable {
     /** The serial version uid. */

@@ -38,6 +38,12 @@ import org.springframework.ui.Model;
 
 /**
  * The Class OrderControllerTest.
+ *
+ * <p>Unit tests for {@link OrderController}. The {@link HttpSession} is mocked in these
+ * tests to simulate the Redis-backed session store (GCP Memorystore for Redis via Spring Session).
+ * In production, Spring Session transparently replaces the standard {@link HttpSession}
+ * implementation with a Redis-backed one, so controller code using {@code session.getAttribute()}
+ * and {@code session.setAttribute()} works identically whether backed by in-memory or Redis storage.
  */
 @ExtendWith(MockitoExtension.class)
 class OrderControllerTest {
@@ -52,9 +58,14 @@ class OrderControllerTest {
 
   /**
    * List orders without auth returns error.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). A null {@code accountBean}
+   * attribute indicates no authenticated session in GCP Memorystore for Redis.
    */
   @Test
   void listOrdersWithoutAuthReturnsError() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
@@ -67,9 +78,14 @@ class OrderControllerTest {
 
   /**
    * New order form without auth redirects.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). A null {@code accountBean}
+   * attribute indicates no authenticated session in GCP Memorystore for Redis.
    */
   @Test
   void newOrderFormWithoutAuthRedirects() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
@@ -82,9 +98,15 @@ class OrderControllerTest {
 
   /**
    * New order form with auth and cart returns new order view.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). In production, the
+   * {@code accountBean} and {@code cart} attributes are retrieved from
+   * GCP Memorystore for Redis, and the new {@code order} attribute is stored there.
    */
   @Test
   void newOrderFormWithAuthAndCartReturnsNewOrderView() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -117,9 +139,14 @@ class OrderControllerTest {
 
   /**
    * List orders with auth returns order list.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). The {@code accountBean}
+   * attribute is retrieved from GCP Memorystore for Redis in production.
    */
   @Test
   void listOrdersWithAuthReturnsOrderList() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
@@ -136,6 +163,11 @@ class OrderControllerTest {
 
   /**
    * Confirm order uses billing address from session.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). The {@code order} attribute
+   * is retrieved from GCP Memorystore for Redis in production, ensuring billing
+   * address data persists across distributed instances.
    */
   @Test
   void confirmOrderUsesBillingAddressFromSession() {
@@ -143,6 +175,7 @@ class OrderControllerTest {
     // The @ModelAttribute Order is therefore all-null. The controller must use
     // the session order (which has the full billing address) and must NOT
     // overwrite it with the null-filled model attribute.
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -177,6 +210,11 @@ class OrderControllerTest {
 
   /**
    * Shipping form submission does not overwrite billing fields.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). The {@code order} attribute
+   * is retrieved from GCP Memorystore for Redis in production, ensuring billing
+   * address data persists across distributed instances without being overwritten.
    */
   @Test
   void shippingFormSubmissionDoesNotOverwriteBillingFields() {
@@ -185,6 +223,7 @@ class OrderControllerTest {
     // The controller must NOT overwrite the billing address stored in the session
     // with these null values, or the subsequent insertOrder will fail with a
     // NOT NULL constraint violation on BILLADDR1.
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
 
@@ -230,9 +269,14 @@ class OrderControllerTest {
 
   /**
    * View order without auth redirects.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). A null {@code accountBean}
+   * attribute indicates no authenticated session in GCP Memorystore for Redis.
    */
   @Test
   void viewOrderWithoutAuthRedirects() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);
@@ -244,9 +288,14 @@ class OrderControllerTest {
 
   /**
    * View order with auth and matching username returns view order.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). The {@code accountBean}
+   * attribute is retrieved from GCP Memorystore for Redis in production.
    */
   @Test
   void viewOrderWithAuthAndMatchingUsernameReturnsViewOrder() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();
@@ -266,9 +315,14 @@ class OrderControllerTest {
 
   /**
    * View order with auth but different username returns error.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). The {@code accountBean}
+   * attribute is retrieved from GCP Memorystore for Redis in production.
    */
   @Test
   void viewOrderWithAuthButDifferentUsernameReturnsError() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     org.mybatis.jpetstore.domain.Account account = new org.mybatis.jpetstore.domain.Account();

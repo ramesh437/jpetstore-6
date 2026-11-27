@@ -34,6 +34,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * The Class CartController.
+ *
+ * <p>Cart state is stored via {@link HttpSession}, which is transparently backed by
+ * Google Cloud Memorystore for Redis through Spring Session
+ * ({@code @EnableRedisHttpSession} in {@code RedisHttpSessionConfig}).
+ * This enables stateless, horizontally-scalable deployments on GCP without server affinity.
+ * The cart object is serialized to Redis on each request, ensuring cart data persists
+ * across instance restarts and load balancing.
  */
 @Controller
 @RequestMapping("/cart")
@@ -47,17 +54,24 @@ public class CartController {
   private CatalogService catalogService;
 
   /**
-   * Get cart.
+   * Get cart from the Redis-backed session (GCP Memorystore for Redis via Spring Session).
+   *
+   * <p>Retrieves the cart from the distributed Redis session store. If no cart exists
+   * in the session, a new empty cart is created and stored in Redis for subsequent requests.
+   * This pattern works identically across all application instances since session state
+   * is centralized in GCP Memorystore for Redis.
    *
    * @param session
-   *          the session
+   *          the session (Redis-backed via Spring Session / GCP Memorystore)
    *
    * @return the cart
    */
   private Cart getCart(HttpSession session) {
+    // Cart retrieved from GCP Memorystore for Redis via Spring Session
     Cart cart = (Cart) session.getAttribute("cart");
     if (cart == null) {
       cart = new Cart();
+      // Cart stored in GCP Memorystore for Redis via Spring Session
       session.setAttribute("cart", cart);
     }
     return cart;
@@ -67,7 +81,7 @@ public class CartController {
    * View cart.
    *
    * @param session
-   *          the session
+   *          the session (Redis-backed via Spring Session / GCP Memorystore)
    * @param model
    *          the model
    *
@@ -85,7 +99,7 @@ public class CartController {
    * @param workingItemId
    *          the working item id
    * @param session
-   *          the session
+   *          the session (Redis-backed via Spring Session / GCP Memorystore)
    * @param model
    *          the model
    *
@@ -106,6 +120,8 @@ public class CartController {
       Item item = catalogService.getItem(workingItemId);
       cart.addItem(item, isInStock);
     }
+    // Persist updated cart back to Redis session store
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -116,7 +132,7 @@ public class CartController {
    * @param workingItemId
    *          the working item id
    * @param session
-   *          the session
+   *          the session (Redis-backed via Spring Session / GCP Memorystore)
    * @param model
    *          the model
    *
@@ -135,6 +151,8 @@ public class CartController {
       model.addAttribute("message", "Attempted to remove null CartItem from Cart.");
       return ERROR_VIEW;
     }
+    // Persist updated cart back to Redis session store
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -145,7 +163,7 @@ public class CartController {
    * @param request
    *          the request
    * @param session
-   *          the session
+   *          the session (Redis-backed via Spring Session / GCP Memorystore)
    * @param model
    *          the model
    *
@@ -168,6 +186,8 @@ public class CartController {
         // ignore invalid numeric input on purpose
       }
     }
+    // Persist updated cart back to Redis session store
+    session.setAttribute("cart", cart);
     model.addAttribute("cart", cart);
     return "cart/Cart";
   }
@@ -176,7 +196,7 @@ public class CartController {
    * Check out.
    *
    * @param session
-   *          the session
+   *          the session (Redis-backed via Spring Session / GCP Memorystore)
    * @param model
    *          the model
    *

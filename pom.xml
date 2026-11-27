@@ -30,7 +30,8 @@
   <groupId>org.mybatis</groupId>
   <artifactId>jpetstore</artifactId>
   <version>6.4.1-SNAPSHOT</version>
-  <packaging>war</packaging>
+  <!-- cr-java-0107: Changed from 'war' to 'jar' for executable JAR packaging with embedded Tomcat (GCP cloud-native) -->
+  <packaging>jar</packaging>
 
   <name>JPetStore Demo 6</name>
   <url>https://www.mybatis.org/jpetstore-6/</url>
@@ -74,6 +75,15 @@
     <mockito.version>5.24.0</mockito.version>
     <slf4j.version>2.0.20</slf4j.version>
     <spring.version>5.3.39</spring.version>
+
+    <!-- Spring Cloud GCP -->
+    <spring-cloud-gcp.version>3.4.0</spring-cloud-gcp.version>
+
+    <!-- Spring Session & Redis -->
+    <spring-session.version>2.7.4</spring-session.version>
+
+    <!-- Spring Boot Maven Plugin version for executable JAR packaging -->
+    <spring-boot-maven-plugin.version>2.7.18</spring-boot-maven-plugin.version>
 
     <!-- Plugin Versions -->
     <cargo-maven3-plugin.version>1.10.30</cargo-maven3-plugin.version>
@@ -151,17 +161,17 @@
       <version>1.2.5</version>
     </dependency>
 
+    <!-- cr-java-0107: scope changed from 'provided' to compile-time inclusion;
+         embedded Tomcat (via spring-boot-maven-plugin repackage) bundles servlet APIs in the executable JAR -->
     <dependency>
       <groupId>jakarta.servlet.jsp</groupId>
       <artifactId>jakarta.servlet.jsp-api</artifactId>
       <version>2.3.6</version>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>jakarta.servlet</groupId>
       <artifactId>jakarta.servlet-api</artifactId>
       <version>4.0.4</version>
-      <scope>provided</scope>
     </dependency>
 
     <dependency>
@@ -186,6 +196,34 @@
       <artifactId>hsqldb</artifactId>
       <version>${hsqldb.version}</version>
       <classifier>jdk8</classifier>
+    </dependency>
+
+    <!-- Guava for bounded/immutable collections (GCP cloud-native memory safety) -->
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>33.4.8-jre</version>
+    </dependency>
+
+    <!-- Spring Session Data Redis - backed by GCP Memorystore for Redis -->
+    <dependency>
+      <groupId>org.springframework.session</groupId>
+      <artifactId>spring-session-data-redis</artifactId>
+      <version>${spring-session.version}</version>
+    </dependency>
+
+    <!-- Lettuce Redis client (used by Spring Session Data Redis) -->
+    <dependency>
+      <groupId>io.lettuce</groupId>
+      <artifactId>lettuce-core</artifactId>
+      <version>6.3.2.RELEASE</version>
+    </dependency>
+
+    <!-- Spring Data Redis -->
+    <dependency>
+      <groupId>org.springframework.data</groupId>
+      <artifactId>spring-data-redis</artifactId>
+      <version>2.7.18</version>
     </dependency>
 
     <!-- Test dependencies -->
@@ -249,16 +287,43 @@
       <version>${spring.version}</version>
       <scope>test</scope>
     </dependency>
+
+    <!-- Spring Cloud GCP Secret Manager for externalized credentials (GCP cloud-native) -->
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>spring-cloud-gcp-starter-secretmanager</artifactId>
+      <version>${spring-cloud-gcp.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>spring-cloud-gcp-autoconfigure</artifactId>
+      <version>${spring-cloud-gcp.version}</version>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
   <build>
     <finalName>jpetstore</finalName>
     <pluginManagement>
       <plugins>
+        <!-- cr-java-0107: Replaced maven-war-plugin with spring-boot-maven-plugin to produce
+             self-contained executable JAR with embedded Tomcat for GCP GKE/Cloud Run deployment -->
         <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-war-plugin</artifactId>
-          <version>3.5.1</version>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-maven-plugin</artifactId>
+          <version>${spring-boot-maven-plugin.version}</version>
+          <configuration>
+            <executable>true</executable>
+          </configuration>
+          <executions>
+            <execution>
+              <goals>
+                <goal>repackage</goal>
+              </goals>
+            </execution>
+          </executions>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -289,6 +354,12 @@
     </pluginManagement>
 
     <plugins>
+      <!-- cr-java-0107: spring-boot-maven-plugin produces executable JAR with embedded Tomcat
+           enabling containerized deployment on GKE, Cloud Run, or App Engine flexible environment -->
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
       <plugin>
         <groupId>org.codehaus.cargo</groupId>
         <artifactId>cargo-maven3-plugin</artifactId>
@@ -494,12 +565,19 @@
       </properties>
       <build>
         <plugins>
+          <!-- cr-java-0107: Replaced maven-war-plugin (line 499 in source) with spring-boot-maven-plugin
+               to produce self-contained executable JAR with embedded Tomcat for GCP cloud-native deployment -->
           <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-war-plugin</artifactId>
-            <configuration>
-              <packagingExcludes>WEB-INF/beans.xml</packagingExcludes>
-            </configuration>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+            <version>${spring-boot-maven-plugin.version}</version>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>repackage</goal>
+                </goals>
+              </execution>
+            </executions>
           </plugin>
           <plugin>
             <groupId>org.codehaus.cargo</groupId>

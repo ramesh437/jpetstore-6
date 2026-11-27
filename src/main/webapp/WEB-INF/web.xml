@@ -32,6 +32,28 @@
         <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
     </listener>
 
+    <!--
+        Spring Session Filter - replaces the default HttpSession implementation with
+        a Redis-backed session store (GCP Memorystore for Redis).
+        This filter MUST be declared before any other filters that use HttpSession,
+        and must be the first filter in the filter chain.
+        See: RedisHttpSessionConfig for Redis connection configuration.
+    -->
+    <filter>
+        <filter-name>springSessionRepositoryFilter</filter-name>
+        <filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
+        <init-param>
+            <param-name>targetBeanName</param-name>
+            <param-value>springSessionRepositoryFilter</param-value>
+        </init-param>
+    </filter>
+    <filter-mapping>
+        <filter-name>springSessionRepositoryFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+        <dispatcher>REQUEST</dispatcher>
+        <dispatcher>ERROR</dispatcher>
+    </filter-mapping>
+
     <servlet>
         <servlet-name>dispatcher</servlet-name>
         <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>

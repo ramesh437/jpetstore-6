@@ -41,6 +41,14 @@
     <!-- enable component scanning and autowire (beware that this does not enable mapper scanning!) -->
     <context:component-scan base-package="org.mybatis.jpetstore.service" />
 
+    <!--
+        Register RedisHttpSessionConfig so that Spring Session's @EnableRedisHttpSession
+        annotation is processed and the springSessionRepositoryFilter bean is created.
+        This enables GCP Memorystore for Redis as the centralized session store,
+        replacing the default in-memory HttpSession with a distributed Redis-backed session.
+    -->
+    <context:component-scan base-package="org.mybatis.jpetstore.web.configuration" />
+
     <!-- enable transaction demarcation with annotations -->
     <tx:annotation-driven />
 

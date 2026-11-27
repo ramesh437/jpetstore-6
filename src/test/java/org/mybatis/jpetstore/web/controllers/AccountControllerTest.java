@@ -38,6 +38,12 @@ import org.springframework.ui.Model;
 
 /**
  * The Class AccountControllerTest.
+ *
+ * <p>Unit tests for {@link AccountController}. The {@link HttpSession} is mocked in these
+ * tests to simulate the Redis-backed session store (GCP Memorystore for Redis via Spring Session).
+ * In production, Spring Session transparently replaces the standard {@link HttpSession}
+ * implementation with a Redis-backed one, so controller code using {@code session.getAttribute()}
+ * and {@code session.setAttribute()} works identically whether backed by in-memory or Redis storage.
  */
 @ExtendWith(MockitoExtension.class)
 class AccountControllerTest {
@@ -63,9 +69,13 @@ class AccountControllerTest {
 
   /**
    * Signon with invalid credentials returns signon view.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session).
    */
   @Test
   void signonWithInvalidCredentialsReturnsSignonView() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(accountService.getAccount("bad", "bad")).thenReturn(null);
@@ -78,9 +88,14 @@ class AccountControllerTest {
 
   /**
    * Signon with valid credentials redirects.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). In production, the
+   * {@code accountBean} attribute is stored in GCP Memorystore for Redis.
    */
   @Test
   void signonWithValidCredentialsRedirects() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     Account account = new Account();
@@ -108,9 +123,14 @@ class AccountControllerTest {
 
   /**
    * Signoff invalidates session and redirects to catalog.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). Calling {@code session.invalidate()}
+   * removes all session data from GCP Memorystore for Redis in production.
    */
   @Test
   void signoffInvalidatesSessionAndRedirectsToCatalog() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
 
     String view = accountController.signoff(session);
@@ -156,11 +176,16 @@ class AccountControllerTest {
 
   /**
    * Edit account redirects to edit page not catalog.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). In production, the updated
+   * {@code accountBean} attribute is stored in GCP Memorystore for Redis.
    */
   @Test
   void editAccountRedirectsToEditPageNotCatalog() {
     // After saving account, should redirect to /account/edit so the user stays
     // on their profile page (the IT test expects the edit form to reload).
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Account account = new Account();
     account.setUsername("j2ee");
@@ -175,9 +200,14 @@ class AccountControllerTest {
 
   /**
    * Edit account form with session returns edit account view with account.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). The {@code accountBean}
+   * attribute is retrieved from GCP Memorystore for Redis in production.
    */
   @Test
   void editAccountFormWithSessionReturnsEditAccountViewWithAccount() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     Account account = new Account();
@@ -195,9 +225,14 @@ class AccountControllerTest {
 
   /**
    * Edit account form without session returns edit account view without account.
+   *
+   * <p>The mocked {@link HttpSession} simulates the Redis-backed session
+   * (GCP Memorystore for Redis via Spring Session). A null return from
+   * {@code session.getAttribute("accountBean")} indicates no active session in Redis.
    */
   @Test
   void editAccountFormWithoutSessionReturnsEditAccountViewWithoutAccount() {
+    // Mock simulates the Redis-backed HttpSession (GCP Memorystore for Redis via Spring Session)
     HttpSession session = mock(HttpSession.class);
     Model model = new ExtendedModelMap();
     when(session.getAttribute("accountBean")).thenReturn(null);

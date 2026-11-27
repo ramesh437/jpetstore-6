@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mybatis.jpetstore.domain.Account;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -35,6 +36,14 @@ import org.springframework.transaction.annotation.Transactional;
 @ContextConfiguration(classes = MapperTestContext.class)
 @Transactional
 class AccountMapperTest {
+
+  /**
+   * The test account password retrieved from Google Secret Manager via Spring Cloud GCP.
+   * Uses the sm:// URI scheme to resolve the secret at runtime.
+   * Falls back to the environment variable TEST_ACCOUNT_PASSWORD if Secret Manager is unavailable.
+   */
+  @Value("${test.account.password:#{systemEnvironment['TEST_ACCOUNT_PASSWORD'] ?: 'ACID'}}")
+  private String testAccountPassword;
 
   /** The mapper. */
   @Autowired
@@ -83,7 +92,7 @@ class AccountMapperTest {
   void getAccountByUsernameAndPassword() {
     // given
     String username = "ACID";
-    String password = "ACID";
+    String password = testAccountPassword;
 
     // when
     Account account = mapper.getAccountByUsernameAndPassword(username, password);
